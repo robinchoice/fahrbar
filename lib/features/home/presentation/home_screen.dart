@@ -11,6 +11,10 @@ import '../../cars/domain/cars_provider.dart';
 // Default center: Berlin
 const _defaultCenter = LatLng(52.52, 13.405);
 
+enum MapMode { carshare, driver }
+
+final _mapModeProvider = StateProvider<MapMode>((ref) => MapMode.carshare);
+
 final _userLocationProvider = FutureProvider<LatLng>((ref) async {
   bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
   if (!serviceEnabled) return _defaultCenter;
@@ -52,22 +56,24 @@ class _MapWithCars extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final carsAsync = ref.watch(nearbyCarsProvider(center));
+    final mode = ref.watch(_mapModeProvider);
 
     return carsAsync.when(
-      loading: () => _MapView(center: center, cars: const []),
-      error: (e, st) => _MapView(center: center, cars: const []),
-      data: (cars) => _MapView(center: center, cars: cars),
+      loading: () => _MapView(center: center, cars: const [], mode: mode),
+      error: (e, st) => _MapView(center: center, cars: const [], mode: mode),
+      data: (cars) => _MapView(center: center, cars: cars, mode: mode),
     );
   }
 }
 
-class _MapView extends StatelessWidget {
-  const _MapView({required this.center, required this.cars});
+class _MapView extends ConsumerWidget {
+  const _MapView({required this.center, required this.cars, this.mode = MapMode.carshare});
   final LatLng center;
   final List<Car> cars;
+  final MapMode mode;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Stack(
       children: [
         FlutterMap(
@@ -79,13 +85,11 @@ class _MapView extends StatelessWidget {
           ),
           children: [
             TileLayer(
-              urlTemplate:
-                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'de.fahrbar',
             ),
             MarkerLayer(
               markers: [
-                // User location marker
                 Marker(
                   point: center,
                   width: 20,
@@ -98,7 +102,6 @@ class _MapView extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Car markers
                 ...cars
                     .where((c) => c.location != null)
                     .map((c) => _carMarker(context, c)),
@@ -106,17 +109,17 @@ class _MapView extends StatelessWidget {
             ),
           ],
         ),
-        // Search bar overlay
+        // Search bar
         SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Material(
               elevation: 4,
               borderRadius: BorderRadius.circular(12),
-              child: TextField(
+              child: const TextField(
                 readOnly: true,
-                decoration: const InputDecoration(
-                  hintText: 'Auto oder Fahrer suchen…',
+                decoration: InputDecoration(
+                  hintText: 'Suchen…',
                   prefixIcon: Icon(Icons.search),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 14),
@@ -125,7 +128,17 @@ class _MapView extends StatelessWidget {
             ),
           ),
         ),
-        // Car count badge
+        // Mode toggle
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 76),
+              child: _ModeSwitcher(mode: mode),
+            ),
+          ),
+        ),
+        // Bottom badge
         if (cars.isNotEmpty)
           Positioned(
             bottom: 32,
@@ -137,11 +150,11 @@ class _MapView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
+                      horizontal: 20, vertical: 10),
                   child: Text(
-                    '${cars.length} Autos in der Nähe',
+                    mode == MapMode.carshare
+                        ? '${cars.length} Autos in der Nähe'
+                        : '${cars.length} Fahrer in der Nähe',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -179,6 +192,83 @@ class _MapView extends StatelessWidget {
   }
 }
 
+class _ModeSwitcher extends ConsumerWidget {
+  const _ModeSwitcher({required this.mode});
+  final MapMode mode;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(24),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ModeTab(
+            label: 'Auto leihen',
+            icon: Icons.directions_car,
+            selected: mode == MapMode.carshare,
+            onTap: () => ref.read(_mapModeProvider.notifier).state =
+                MapMode.carshare,
+          ),
+          _ModeTab(
+            label: 'Fahrer',
+            icon: Icons.person_pin_circle,
+            selected: mode == MapMode.driver,
+            onTap: () =>
+                ref.read(_mapModeProvider.notifier).state = MapMode.driver,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeTab extends StatelessWidget {
+  const _ModeTab({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? theme.colorScheme.primary : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Icon(icon,
+                size: 18,
+                color: selected ? Colors.white : theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _MapSkeleton extends StatelessWidget {
   const _MapSkeleton();
 
@@ -186,9 +276,7 @@ class _MapSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFFE8E8E8),
-      child: const Center(
-        child: CircularProgressIndicator(),
-      ),
+      child: const Center(child: CircularProgressIndicator()),
     );
   }
 }

@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/domain/auth_notifier.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/cars/presentation/car_detail_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
+import '../widgets/app_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -21,20 +24,31 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: _AuthStatusListenable(ref),
     routes: [
       GoRoute(
-        path: '/',
-        name: 'home',
-        builder: (context, state) => const HomeScreen(),
-      ),
-      GoRoute(
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginScreen(),
       ),
+      ShellRoute(
+        builder: (context, state, child) => AppShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/',
+            name: 'home',
+            builder: (context, state) => const HomeScreen(),
+          ),
+          GoRoute(
+            path: '/profile',
+            name: 'profile',
+            builder: (context, state) => const ProfileScreen(),
+          ),
+        ],
+      ),
+      // Full-screen routes (no shell)
       GoRoute(
         path: '/cars/:id',
         name: 'car-detail',
-        builder: (context, state) => _PlaceholderScreen(
-          title: 'Car: ${state.pathParameters['id']}',
+        builder: (context, state) => CarDetailScreen(
+          carId: state.pathParameters['id']!,
         ),
       ),
       GoRoute(
@@ -44,17 +58,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           title: 'Booking: ${state.pathParameters['id']}',
         ),
       ),
-      GoRoute(
-        path: '/profile',
-        name: 'profile',
-        builder: (context, state) =>
-            const _PlaceholderScreen(title: 'Profile'),
-      ),
     ],
   );
 });
 
-// Notifies GoRouter when auth state changes so redirect re-runs.
 class _AuthStatusListenable extends ChangeNotifier {
   _AuthStatusListenable(Ref ref) {
     ref.listen(authNotifierProvider, (_, next) => notifyListeners());
