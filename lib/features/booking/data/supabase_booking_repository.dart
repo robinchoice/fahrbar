@@ -19,6 +19,7 @@ class SupabaseBookingRepository implements BookingRepository {
     required double totalPrice,
     String? carId,
     String? driverId,
+    String? stripePaymentIntentId,
   }) async {
     final platformFee = totalPrice * _platformFeeRate;
     final ownerPayout = totalPrice - platformFee;
@@ -29,12 +30,13 @@ class SupabaseBookingRepository implements BookingRepository {
       'driver_id': driverId,
       'renter_id': renterId,
       'owner_id': ownerId,
-      'status': 'pending',
+      'status': stripePaymentIntentId != null ? 'confirmed' : 'pending',
       'start_time': startTime.toIso8601String(),
       'end_time': endTime.toIso8601String(),
       'total_price': totalPrice,
       'platform_fee': platformFee,
       'owner_payout': ownerPayout,
+      'stripe_payment_intent_id': stripePaymentIntentId,
     }).select().single();
 
     return Booking.fromJson(response);

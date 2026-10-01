@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 
+import '../../../providers/supabase_provider.dart';
 import '../../cars/domain/car.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../domain/booking.dart';
@@ -43,8 +45,7 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
     final now = DateTime.now();
     final initial = isStart
         ? (_startTime ?? now.add(const Duration(hours: 1)))
-        : (_endTime ??
-            (_startTime ?? now).add(const Duration(hours: 2)));
+        : (_endTime ?? (_startTime ?? now).add(const Duration(hours: 2)));
 
     final date = await showDatePicker(
       context: context,
@@ -60,13 +61,11 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
     );
     if (time == null || !mounted) return;
 
-    final dt = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute);
+    final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
 
     setState(() {
       if (isStart) {
         _startTime = dt;
-        // reset end if it's before new start
         if (_endTime != null && _endTime!.isBefore(dt)) _endTime = null;
       } else {
         _endTime = dt;
@@ -91,8 +90,7 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
       return;
     }
 
-    final repo = ref.read(authRepositoryProvider);
-    final userId = repo.currentUser?.id;
+    final userId = ref.read(authRepositoryProvider).currentUser?.id;
     if (userId == null) return;
 
     setState(() {
@@ -101,21 +99,56 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
     });
 
     try {
+      // 1. PaymentIntent via Edge Function erstellen
+      final supabase = ref.read(supabaseClientProvider);
+      final fnResponse = await supabase.functions.invoke(
+        'create-payment-intent',
+        body: {
+          'amount': _totalPrice,
+          'currency': widget.car.currency.toLowerCase(),
+        },
+      );
+
+      if (fnResponse.status != 200) {
+        throw Exception(fnResponse.data['error'] ?? 'Payment-Init fehlgeschlagen');
+      }
+
+      final clientSecret = fnResponse.data['clientSecret'] as String;
+      final paymentIntentId = clientSecret.split('_secret_').first;
+
+      // 2. PaymentSheet initialisieren
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'fahrbar',
+          style: ThemeMode.dark,
+        ),
+      );
+
+      // 3. PaymentSheet anzeigen
+      await Stripe.instance.presentPaymentSheet();
+
+      // 4. Buchung in DB speichern (nach erfolgreicher Zahlung)
       await ref.read(bookingRepositoryProvider).create(
-            type: BookingType.carshare,
-            renterId: userId,
-            ownerId: widget.car.ownerId,
-            carId: widget.car.id,
-            startTime: _startTime!,
-            endTime: _endTime!,
-            totalPrice: _totalPrice,
-          );
+        type: BookingType.carshare,
+        renterId: userId,
+        ownerId: widget.car.ownerId,
+        carId: widget.car.id,
+        startTime: _startTime!,
+        endTime: _endTime!,
+        totalPrice: _totalPrice,
+        stripePaymentIntentId: paymentIntentId,
+      );
 
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Buchungsanfrage gesendet!')),
+          const SnackBar(content: Text('Buchung bestätigt! Gute Fahrt.')),
         );
+      }
+    } on StripeException catch (e) {
+      if (e.error.code != FailureCode.Canceled) {
+        setState(() => _error = e.error.localizedMessage ?? 'Zahlung fehlgeschlagen.');
       }
     } catch (e) {
       setState(() => _error = e.toString());
@@ -152,8 +185,7 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
             ),
             Text(
               widget.car.displayName,
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
             _DateTimeRow(
@@ -190,20 +222,21 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
                 ),
               ),
             ElevatedButton(
-              onPressed: _loading ? null : _submit,
+              onPressed: (_loading || _totalPrice == 0) ? null : _submit,
               child: _loading
                   ? const SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Buchung anfragen'),
+                  : Text(_totalPrice > 0
+                      ? 'Jetzt buchen · ${_totalPrice.toStringAsFixed(2)} ${widget.car.currency}'
+                      : 'Zeitraum auswählen'),
             ),
             const SizedBox(height: 8),
             Text(
-              'Der Anbieter muss die Buchung noch bestätigen.',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: Colors.grey),
+              'Zahlung über Stripe · Sofort bestätigt',
+              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
               textAlign: TextAlign.center,
             ),
           ],
@@ -227,7 +260,7 @@ class _DateTimeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final formatted = value == null
         ? 'Auswählen'
-        : '${value!.day}.${value!.month}.${value!.year}  '
+        : '${value!.day.toString().padLeft(2, '0')}.${value!.month.toString().padLeft(2, '0')}.${value!.year}  '
             '${value!.hour.toString().padLeft(2, '0')}:'
             '${value!.minute.toString().padLeft(2, '0')} Uhr';
 
@@ -237,8 +270,7 @@ class _DateTimeRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -248,13 +280,14 @@ class _DateTimeRow extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: Theme.of(context).textTheme.labelSmall),
-                Text(formatted,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                Text(label, style: Theme.of(context).textTheme.labelSmall),
+                Text(
+                  formatted,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
               ],
             ),
           ],
@@ -282,21 +315,20 @@ class _PriceSummary extends StatelessWidget {
       children: [
         _Row('Dauer', duration),
         const SizedBox(height: 4),
-        _Row('Gesamtpreis',
-            '${total.toStringAsFixed(2)} $currency',
-            bold: true),
+        _Row('Gesamtpreis', '${total.toStringAsFixed(2)} $currency', bold: true),
         const SizedBox(height: 4),
-        _Row('davon Plattformgebühr (15%)',
-            '${platformFee.toStringAsFixed(2)} $currency',
-            small: true),
+        _Row(
+          'davon Plattformgebühr (15%)',
+          '${platformFee.toStringAsFixed(2)} $currency',
+          small: true,
+        ),
       ],
     );
   }
 }
 
 class _Row extends StatelessWidget {
-  const _Row(this.label, this.value,
-      {this.bold = false, this.small = false});
+  const _Row(this.label, this.value, {this.bold = false, this.small = false});
   final String label;
   final String value;
   final bool bold;
@@ -305,10 +337,7 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = small
-        ? Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(color: Colors.grey)
+        ? Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)
         : Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontWeight: bold ? FontWeight.bold : FontWeight.normal,
             );

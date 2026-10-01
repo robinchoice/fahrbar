@@ -10,6 +10,7 @@ abstract class BookingRepository {
     required double totalPrice,
     String? carId,
     String? driverId,
+    String? stripePaymentIntentId,
   });
 
   Future<Booking> getById(String id);

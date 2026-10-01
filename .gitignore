@@ -66,3 +66,4 @@ supabase/.temp
 *.swp
 *.swo
 .notes/
+supabase/functions/.env
