@@ -86,12 +86,4 @@ class SupabaseBookingRepository implements BookingRepository {
         .eq('id', id);
   }
 
-  @override
-  Stream<Booking> watch(String id) {
-    return _client
-        .from('bookings')
-        .stream(primaryKey: ['id'])
-        .eq('id', id)
-        .map((rows) => Booking.fromJson(rows.first));
-  }
 }

@@ -63,15 +63,4 @@ class SupabaseCarRepository implements CarRepository {
         .map((e) => Car.fromJson(e as Map<String, dynamic>))
         .toList();
   }
-
-  @override
-  Future<Car> getById(String id) async {
-    final response = await _client
-        .from('cars')
-        .select()
-        .eq('id', id)
-        .single();
-
-    return Car.fromJson(response);
-  }
 }

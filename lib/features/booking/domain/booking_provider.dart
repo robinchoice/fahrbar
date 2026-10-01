@@ -20,8 +20,3 @@ final ownerBookingsProvider =
     FutureProvider.autoDispose.family<List<Booking>, String>((ref, ownerId) {
   return ref.read(bookingRepositoryProvider).getForOwner(ownerId);
 });
-
-final bookingStreamProvider =
-    StreamProvider.family<Booking, String>((ref, bookingId) {
-  return ref.read(bookingRepositoryProvider).watch(bookingId);
-});

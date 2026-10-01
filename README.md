@@ -127,7 +127,7 @@ lib/
     profile/     presentation
     home/        presentation
   core/
-    theme · router · widgets
+    theme · router
   providers/
     supabase_provider · auth_provider
 

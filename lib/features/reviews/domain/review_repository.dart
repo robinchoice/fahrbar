@@ -10,5 +10,4 @@ abstract class ReviewRepository {
   });
 
   Future<List<Review>> getForCar(String carId);
-  Future<bool> hasReviewed({required String bookingId, required String reviewerId});
 }

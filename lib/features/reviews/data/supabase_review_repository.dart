@@ -37,19 +37,4 @@ class SupabaseReviewRepository implements ReviewRepository {
         .map((e) => Review.fromJson(e as Map<String, dynamic>))
         .toList();
   }
-
-  @override
-  Future<bool> hasReviewed({
-    required String bookingId,
-    required String reviewerId,
-  }) async {
-    final response = await _client
-        .from('reviews')
-        .select('id')
-        .eq('booking_id', bookingId)
-        .eq('reviewer_id', reviewerId)
-        .maybeSingle();
-
-    return response != null;
-  }
 }
