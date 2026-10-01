@@ -28,14 +28,12 @@ class SupabaseReviewRepository implements ReviewRepository {
 
   @override
   Future<List<Review>> getForCar(String carId) async {
-    // Reviews for a car = reviews for bookings of that car
-    final response = await _client
-        .from('reviews')
-        .select('*, bookings!inner(car_id)')
-        .eq('bookings.car_id', carId)
-        .order('created_at', ascending: false);
+    // RPC instead of a join: bookings are only visible to their parties
+    final response = await _client.rpc('car_reviews', params: {
+      'car_id': carId,
+    }) as List<dynamic>;
 
-    return (response as List)
+    return response
         .map((e) => Review.fromJson(e as Map<String, dynamic>))
         .toList();
   }

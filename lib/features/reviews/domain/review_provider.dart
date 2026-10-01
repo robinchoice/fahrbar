@@ -10,6 +10,6 @@ final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {
 });
 
 final carReviewsProvider =
-    FutureProvider.family<List<Review>, String>((ref, carId) {
+    FutureProvider.autoDispose.family<List<Review>, String>((ref, carId) {
   return ref.read(reviewRepositoryProvider).getForCar(carId);
 });

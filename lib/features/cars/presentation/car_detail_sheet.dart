@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/car.dart';
 import '../../booking/presentation/booking_flow.dart';
+import '../../reviews/domain/review_provider.dart';
 
 class CarDetailSheet extends StatelessWidget {
   const CarDetailSheet({super.key, required this.car});
@@ -171,6 +173,7 @@ class CarDetailSheet extends StatelessWidget {
                             ),
                           ),
                         ],
+                        _Reviews(carId: car.id),
                         // Space for fixed booking button
                         const SizedBox(height: 100),
                       ],
@@ -342,4 +345,60 @@ class _PriceRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _Reviews extends ConsumerWidget {
+  const _Reviews({required this.carId});
+  final String carId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reviews = ref.watch(carReviewsProvider(carId)).valueOrNull ?? [];
+    if (reviews.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Bewertungen',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+          for (final review in reviews)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      for (var star = 1; star <= 5; star++)
+                        Icon(
+                          star <= review.rating ? Icons.star : Icons.star_border,
+                          size: 14,
+                          color: Colors.amber,
+                        ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatDate(review.createdAt.toLocal()),
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                  if (review.comment != null) ...[
+                    const SizedBox(height: 4),
+                    Text(review.comment!, style: const TextStyle(fontSize: 14)),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 }

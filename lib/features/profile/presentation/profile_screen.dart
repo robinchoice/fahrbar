@@ -212,7 +212,7 @@ class _OwnerBookingsSection extends ConsumerWidget {
     final bookingsAsync = ref.watch(ownerBookingsProvider(ownerId));
 
     return _Section(
-      title: 'Eingehende Anfragen',
+      title: 'Anfragen und Vermietungen',
       children: [
         bookingsAsync.when(
           loading: () => const Padding(
@@ -224,17 +224,20 @@ class _OwnerBookingsSection extends ConsumerWidget {
             title: Text('Fehler: $e'),
           ),
           data: (bookings) {
-            final pending = bookings
-                .where((b) => b.status == BookingStatus.pending)
+            // Requests to answer and rentals whose return is still open
+            final open = bookings
+                .where((b) =>
+                    b.status == BookingStatus.pending ||
+                    b.status == BookingStatus.confirmed)
                 .toList();
-            if (pending.isEmpty) {
+            if (open.isEmpty) {
               return const ListTile(
                 leading: Icon(Icons.inbox),
                 title: Text('Keine offenen Anfragen'),
               );
             }
             return Column(
-              children: pending.map((b) => _OwnerBookingTile(booking: b, ref: ref)).toList(),
+              children: open.map((b) => _OwnerBookingTile(booking: b, ref: ref)).toList(),
             );
           },
         ),
@@ -252,8 +255,13 @@ class _OwnerBookingTile extends StatelessWidget {
     try {
       await ref.read(bookingRepositoryProvider).updateStatus(booking.id, status);
       ref.invalidate(ownerBookingsProvider(booking.ownerId));
+      ref.invalidate(userBookingsProvider(booking.ownerId));
       if (context.mounted) {
-        final msg = status == BookingStatus.confirmed ? 'Bestätigt!' : 'Abgelehnt.';
+        final msg = switch (status) {
+          BookingStatus.confirmed => 'Bestätigt!',
+          BookingStatus.completed => 'Rückgabe bestätigt.',
+          _ => 'Abgelehnt.',
+        };
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
@@ -274,21 +282,36 @@ class _OwnerBookingTile extends StatelessWidget {
       leading: const Icon(Icons.directions_car),
       title: Text(dateStr),
       subtitle: Text('${booking.totalPrice.toStringAsFixed(2)} ${booking.currency}'),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.check_circle, color: Colors.green),
-            tooltip: 'Bestätigen',
-            onPressed: () => _updateStatus(context, BookingStatus.confirmed),
-          ),
-          IconButton(
-            icon: const Icon(Icons.cancel, color: Colors.red),
-            tooltip: 'Ablehnen',
-            onPressed: () => _updateStatus(context, BookingStatus.rejected),
-          ),
-        ],
-      ),
+      trailing: booking.status == BookingStatus.pending
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.check_circle, color: Colors.green),
+                  tooltip: 'Bestätigen',
+                  onPressed: () => _updateStatus(context, BookingStatus.confirmed),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.cancel, color: Colors.red),
+                  tooltip: 'Ablehnen',
+                  onPressed: () => _updateStatus(context, BookingStatus.rejected),
+                ),
+              ],
+            )
+          // Completing the rental unlocks the renter's review
+          : booking.startTime.isBefore(DateTime.now())
+              ? TextButton(
+                  onPressed: () => _updateStatus(context, BookingStatus.completed),
+                  child: const Text('Rückgabe bestätigen'),
+                )
+              : const Text(
+                  'Bestätigt',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
     );
   }
 }
