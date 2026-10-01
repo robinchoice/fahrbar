@@ -4,12 +4,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../cars/domain/car.dart';
 import '../../cars/domain/cars_provider.dart';
 import '../../cars/presentation/car_detail_sheet.dart';
 
 const _defaultCenter = LatLng(47.999, 7.842); // Freiburg im Breisgau
+
+// The public OSM tile servers are only meant for light use, distributed apps
+// need permission (https://operations.osmfoundation.org/policies/tiles/).
+// Release builds should set MAP_TILE_URL to a provider that allows them.
+const _tileUrl = String.fromEnvironment(
+  'MAP_TILE_URL',
+  defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+);
 
 enum MapMode { carshare, driver }
 
@@ -80,8 +89,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'de.fahrbar',
+                urlTemplate: _tileUrl,
+                userAgentPackageName: 'de.fahrbar.fahrbar',
               ),
               MarkerLayer(
                 markers: [
@@ -136,6 +145,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                           )),
                 ],
+              ),
+              // Required by the ODbL, kept above the collapsed car panel
+              Padding(
+                padding: const EdgeInsets.only(bottom: 170),
+                child: SimpleAttributionWidget(
+                  alignment: Alignment.bottomLeft,
+                  source: const Text('OpenStreetMap contributors'),
+                  onTap: () => launchUrl(
+                    Uri.parse('https://www.openstreetmap.org/copyright'),
+                  ),
+                ),
               ),
             ],
           ),

@@ -66,6 +66,8 @@ flutter run \
 
 The local anon key is printed by `supabase start` or via `supabase status -o env`. For testing on a physical device, replace `127.0.0.1` with your machine's LAN IP.
 
+The map loads the public OpenStreetMap tiles, which are only meant for light use such as development. Release builds need a tile provider that allows app use: `--dart-define=MAP_TILE_URL=https://…/{z}/{x}/{y}.png`.
+
 ### Apple and Google sign-in
 
 Both providers are enabled in `supabase/config.toml` and read their credentials from `supabase/.env` (gitignored):
