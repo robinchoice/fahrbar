@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,19 +29,24 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
       ? _endTime!.difference(_startTime!).inMinutes / 60.0
       : 0;
 
+  // Full days at the daily rate, the rest by the hour but never more than
+  // another day.
   double get _totalPrice {
     if (_hours <= 0) return 0;
-    if (_hours >= 24) {
-      final days = (_hours / 24).ceil();
-      return days * widget.car.pricePerDay;
-    }
-    return _hours * widget.car.pricePerHour;
+    final days = _hours ~/ 24;
+    final restHours = _hours - days * 24;
+    return days * widget.car.pricePerDay +
+        min(restHours * widget.car.pricePerHour, widget.car.pricePerDay);
   }
 
   String get _durationLabel {
     if (_hours <= 0) return '—';
-    if (_hours >= 24) return '${(_hours / 24).ceil()} Tag(e)';
-    return '${_hours.toStringAsFixed(1)} Std.';
+    final days = _hours ~/ 24;
+    final restHours = _hours - days * 24;
+    return [
+      if (days > 0) days == 1 ? '1 Tag' : '$days Tage',
+      if (restHours > 0) '${restHours.toStringAsFixed(1)} Std.',
+    ].join(' ');
   }
 
   Future<void> _pickDateTime({required bool isStart}) async {
