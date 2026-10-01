@@ -15,19 +15,12 @@ enum MapMode { carshare, driver }
 
 final _mapModeProvider = StateProvider<MapMode>((ref) => MapMode.carshare);
 
-final _userLocationProvider = FutureProvider<LatLng>((ref) async {
-  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  if (!serviceEnabled) return _defaultCenter;
-
-  LocationPermission permission = await Geolocator.checkPermission();
-  if (permission == LocationPermission.denied) {
-    permission = await Geolocator.requestPermission();
+// autoDispose: a new home screen asks again and reports the outcome
+final _userLocationProvider = FutureProvider.autoDispose<LatLng>((ref) async {
+  if (await Geolocator.checkPermission() == LocationPermission.denied) {
+    await Geolocator.requestPermission();
   }
-  if (permission == LocationPermission.denied ||
-      permission == LocationPermission.deniedForever) {
-    return _defaultCenter;
-  }
-
+  // Throws if location services are off or access was denied
   final pos = await Geolocator.getCurrentPosition();
   return LatLng(pos.latitude, pos.longitude);
 });
@@ -41,20 +34,31 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _mapController = MapController();
-  bool _hasCenteredOnGps = false;
 
   @override
   Widget build(BuildContext context) {
     final locationAsync = ref.watch(_userLocationProvider);
-    final center = locationAsync.valueOrNull ?? _defaultCenter;
+    final userLocation = locationAsync.valueOrNull;
+    final center = userLocation ?? _defaultCenter;
     final carsAsync = ref.watch(nearbyCarsProvider(center));
     final cars = carsAsync.valueOrNull ?? <Car>[];
     final mode = ref.watch(_mapModeProvider);
 
-    // Center map once when GPS resolves
+    // Center the map on a fresh GPS fix, or say why there is none
     ref.listen(_userLocationProvider, (prev, next) {
-      if (!_hasCenteredOnGps && next.hasValue && next.value != null) {
-        _hasCenteredOnGps = true;
+      if (next.isLoading) return;
+      if (next.hasError) {
+        final reason = switch (next.error) {
+          LocationServiceDisabledException() =>
+            'Die Ortungsdienste sind ausgeschaltet.',
+          PermissionDeniedException() =>
+            'fahrbar hat keinen Zugriff auf deinen Standort.',
+          _ => 'Dein Standort ist gerade nicht verfügbar.',
+        };
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$reason Du siehst Autos rund um Freiburg.'),
+        ));
+      } else if (next.hasValue) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _mapController.move(next.value!, 14);
         });
@@ -82,21 +86,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               MarkerLayer(
                 markers: [
                   // User position
-                  Marker(
-                    point: center,
-                    width: 20,
-                    height: 20,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF276EF1),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2.5),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 4),
-                        ],
+                  if (userLocation != null)
+                    Marker(
+                      point: userLocation,
+                      width: 20,
+                      height: 20,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF276EF1),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2.5),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 4),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                   // Car markers
                   ...cars
                       .where((c) => c.location != null)
@@ -188,7 +193,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               shape: const CircleBorder(),
               child: InkWell(
                 customBorder: const CircleBorder(),
-                onTap: () => _mapController.move(center, 14),
+                onTap: () {
+                  if (userLocation != null) {
+                    _mapController.move(userLocation, 14);
+                  } else if (!locationAsync.isLoading) {
+                    // Retry; the listener above reports the outcome
+                    ref.invalidate(_userLocationProvider);
+                  }
+                },
                 child: const Padding(
                   padding: EdgeInsets.all(12),
                   child: Icon(Icons.gps_fixed, size: 20),
@@ -330,7 +342,7 @@ class _BottomCarPanelState extends State<_BottomCarPanel> {
                   : widget.cars.isEmpty
                       ? Center(
                           child: Text(
-                            'Karte zeigt Freiburg im Breisgau',
+                            'Im Umkreis von 10 km ist gerade kein Auto frei.',
                             style: TextStyle(
                                 color: Colors.grey.shade500, fontSize: 13),
                           ),
