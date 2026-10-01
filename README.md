@@ -33,9 +33,9 @@ Why fahrbar changed course: [ADR 002](docs/decisions/002-fahrer-service-pilot.md
 |---|---|
 | App | Flutter 3.41.6+ (iOS/Android app for drivers, web version for booking) |
 | State | Riverpod 2.x |
-| Backend | Supabase (PostgreSQL + PostGIS + Realtime + Auth + Edge Functions), self-hostable |
+| Backend | Supabase (PostgreSQL + PostGIS + Realtime + Auth), self-hostable |
 | Maps | flutter_map + OpenStreetMap |
-| Payments | Invoice after the ride during the pilot · Stripe integration paused with carsharing |
+| Payments | Invoice after the ride during the pilot, no in-app payment |
 
 ---
 
@@ -81,17 +81,6 @@ SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=...
 
 The iOS and Android apps come back through the deep link `de.fahrbar://login-callback`, the web build through `site_url`. Locally that is `http://127.0.0.1:3000`, so start the web app with `flutter run -d chrome --web-hostname 127.0.0.1 --web-port 3000`.
 
-### Carsharing payments (paused)
-
-The carsharing prototype pays via Stripe. To try it with test keys:
-
-```bash
-echo "STRIPE_SECRET_KEY=sk_test_..." > supabase/functions/.env
-supabase functions serve --env-file supabase/functions/.env &
-```
-
-Then add `--dart-define=STRIPE_PK=pk_test_...` to `flutter run`. Stripe is not available in the web build.
-
 ### Seed data
 
 `supabase db reset` automatically runs `supabase/seed.sql`, which creates a test owner account and 5 cars around Freiburg:
@@ -132,7 +121,6 @@ lib/
 
 supabase/
   migrations/   schema + PostGIS RPC
-  functions/    create-payment-intent (Stripe Edge Function)
   seed.sql      test data
 ```
 

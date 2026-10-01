@@ -50,9 +50,6 @@ dependencies:
   # Location
   geolocator: ^13.0.0
 
-  # Payments
-  flutter_stripe: ^10.2.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
