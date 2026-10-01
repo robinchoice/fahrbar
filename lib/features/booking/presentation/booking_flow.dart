@@ -1,14 +1,10 @@
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 
-import '../../../providers/supabase_provider.dart';
 import '../../cars/domain/car.dart';
 import '../../auth/domain/auth_notifier.dart';
-import '../domain/booking.dart';
 import '../domain/booking_provider.dart';
 
 class BookingFlow extends ConsumerStatefulWidget {
@@ -83,10 +79,6 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
   }
 
   Future<void> _submit() async {
-    if (kIsWeb) {
-      setState(() => _error = 'Buchen ist im Browser noch nicht möglich. Bitte nutze die App.');
-      return;
-    }
     if (_startTime == null || _endTime == null) {
       setState(() => _error = 'Bitte Start- und Endzeit auswählen.');
       return;
@@ -102,65 +94,23 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
       return;
     }
 
-    final userId = ref.read(authRepositoryProvider).currentUser?.id;
-    if (userId == null) return;
-
     setState(() {
       _loading = true;
       _error = null;
     });
 
     try {
-      // 1. PaymentIntent via Edge Function erstellen
-      final supabase = ref.read(supabaseClientProvider);
-      final fnResponse = await supabase.functions.invoke(
-        'create-payment-intent',
-        body: {
-          'amount': _totalPrice,
-          'currency': widget.car.currency.toLowerCase(),
-        },
-      );
-
-      if (fnResponse.status != 200) {
-        throw Exception(fnResponse.data['error'] ?? 'Payment-Init fehlgeschlagen');
-      }
-
-      final clientSecret = fnResponse.data['clientSecret'] as String;
-      final paymentIntentId = clientSecret.split('_secret_').first;
-
-      // 2. PaymentSheet initialisieren
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: clientSecret,
-          merchantDisplayName: 'fahrbar',
-          style: ThemeMode.dark,
-        ),
-      );
-
-      // 3. PaymentSheet anzeigen
-      await Stripe.instance.presentPaymentSheet();
-
-      // 4. Buchung in DB speichern (nach erfolgreicher Zahlung)
       await ref.read(bookingRepositoryProvider).create(
-        type: BookingType.carshare,
-        renterId: userId,
-        ownerId: widget.car.ownerId,
         carId: widget.car.id,
         startTime: _startTime!,
         endTime: _endTime!,
-        totalPrice: _totalPrice,
-        stripePaymentIntentId: paymentIntentId,
       );
 
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Buchung bestätigt! Gute Fahrt.')),
+          const SnackBar(content: Text('Anfrage gesendet. Der Vermieter muss noch bestätigen.')),
         );
-      }
-    } on StripeException catch (e) {
-      if (e.error.code != FailureCode.Canceled) {
-        setState(() => _error = e.error.localizedMessage ?? 'Zahlung fehlgeschlagen.');
       }
     } catch (e) {
       setState(() => _error = e.toString());
@@ -242,12 +192,12 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : Text(_totalPrice > 0
-                      ? 'Jetzt buchen · ${_totalPrice.toStringAsFixed(2)} ${widget.car.currency}'
+                      ? 'Anfrage senden · ${_totalPrice.toStringAsFixed(2)} ${widget.car.currency}'
                       : 'Zeitraum auswählen'),
             ),
             const SizedBox(height: 8),
             Text(
-              'Zahlung über Stripe · Sofort bestätigt',
+              'Der Vermieter bestätigt deine Anfrage',
               style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
               textAlign: TextAlign.center,
             ),

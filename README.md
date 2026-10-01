@@ -105,10 +105,9 @@ Then add `--dart-define=STRIPE_PK=pk_test_...` to `flutter run`. Stripe is not a
 ## What's in the code today
 
 - Email sign-in, plus Apple and Google sign-in once their credentials are set (see above).
-- Carsharing prototype: map with nearby cars (PostGIS), car detail, listing form, booking with Stripe payment, owner confirm/reject.
+- Carsharing prototype: map with nearby cars (PostGIS), car detail, listing form, booking requests without payment that the owner confirms or rejects.
 - In-booking chat with live updates via Supabase Realtime.
 - Reviews: once the owner confirms the return, the renter can rate the rental. Reviews and ratings show up on the car.
-- Not production-ready: access rules (RLS) and payments need hardening before any real use.
 
 ---
 
