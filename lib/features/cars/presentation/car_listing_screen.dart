@@ -50,21 +50,42 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
   Future<void> _getLocation() async {
     setState(() => _loadingLocation = true);
     try {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+      if (await Geolocator.checkPermission() == LocationPermission.denied) {
+        await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.deniedForever) return;
-
+      // Throws if location services are off or access was denied
       final pos = await Geolocator.getCurrentPosition();
-      setState(() => _location = LatLng(pos.latitude, pos.longitude));
+      if (mounted) {
+        setState(() {
+          _location = LatLng(pos.latitude, pos.longitude);
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(switch (e) {
+            LocationServiceDisabledException() =>
+              'Die Ortungsdienste sind ausgeschaltet.',
+            PermissionDeniedException() =>
+              'fahrbar hat keinen Zugriff auf deinen Standort. '
+                  'Du kannst ihn in den Einstellungen erlauben.',
+            _ => 'Dein Standort ist gerade nicht verfügbar.',
+          }),
+        ));
+      }
     } finally {
-      setState(() => _loadingLocation = false);
+      if (mounted) setState(() => _loadingLocation = false);
     }
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    // Without a position the car never shows up on the map
+    if (_location == null) {
+      setState(() => _error = 'Bitte lege den Standort per GPS fest.');
+      return;
+    }
 
     final userId = ref.read(authRepositoryProvider).currentUser?.id;
     if (userId == null) return;
