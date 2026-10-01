@@ -1,28 +1,29 @@
 # fahrbar
 
-**Open mobility protocol for Germany.**
+**Open-source driver service: get driven home in your own car.**
 
-fahrbar is not a platform — it is a protocol. The app is the reference implementation. Anyone can fork it, self-host it, or build their own client on top of it.
+fahrbar is an open-source platform for driver services. A vetted driver comes to you and drives *your own car*, so you keep your keys and your car comes home with you.
 
-Two primitives:
+We're starting small: a pilot in Freiburg im Breisgau for patients who aren't allowed to drive after an outpatient procedure (sedation, e.g. a colonoscopy, or pupil-dilating eye drops). Rides are booked in advance and driven by a small, personally vetted team.
 
-- **Carsharing** — list your car, rent someone else's. No middleman that can lock you out.
-- **Driver service** — hire a driver to take your own car somewhere. You keep the keys.
+Why fahrbar changed course: [ADR 002](docs/decisions/002-fahrer-service-pilot.md).
 
 ---
 
-## Why a protocol?
+## Principles
 
-Existing services (Turo, Getaround, Uber) are closed platforms. They control the rules, take 25–40% of every transaction, and can deactivate you without appeal.
+- **Open** — The code is open source and can be forked and self-hosted. Users will be able to export their data. A shared protocol between independent operators stays a long-term vision until a second operator or client actually wants to connect.
+- **Fair** — Nobody gets locked out without a reason and a way to appeal. Bans follow published rules, come with a justification and can be appealed.
+- **Transparent** — A fixed price per ride with an open breakdown (driver wage, insurance, fahrbar) instead of a hidden commission.
 
-fahrbar takes a different approach:
+---
 
-- Open source, self-hostable backend (Supabase / PostgreSQL + PostGIS)
-- Stripe Connect for fiat payments — 15% platform fee on the reference instance
-- Lightning Network (LNbits) for censorship-resistant, low-fee payments — Phase 3
-- Repository pattern throughout — swap out any layer without touching feature code
+## Services
 
-The reference app runs at [fahrbar.de](https://fahrbar.de). But you don't have to use it.
+| Service | Status |
+|---|---|
+| **Driver service** — a vetted driver takes you home in your own car | Pilot in preparation (Freiburg) |
+| **Carsharing** — rent out your car or rent someone else's | Paused, prototype code stays in the repo |
 
 ---
 
@@ -30,12 +31,11 @@ The reference app runs at [fahrbar.de](https://fahrbar.de). But you don't have t
 
 | Layer | Technology |
 |---|---|
-| App | Flutter 3.29+ (iOS, Android) |
+| App | Flutter 3.38+ (iOS/Android app for drivers, web version for booking) |
 | State | Riverpod 2.x |
-| Backend | Supabase (PostgreSQL + PostGIS + Realtime + Auth + Edge Functions) |
+| Backend | Supabase (PostgreSQL + PostGIS + Realtime + Auth + Edge Functions), self-hostable |
 | Maps | flutter_map + OpenStreetMap |
-| Payments | Stripe Connect (fiat) · LNbits (Lightning, Phase 3) |
-| Smart Lock | SmartCar API (Phase 3) |
+| Payments | Invoice after the ride during the pilot · Stripe integration paused with carsharing |
 
 ---
 
@@ -43,10 +43,9 @@ The reference app runs at [fahrbar.de](https://fahrbar.de). But you don't have t
 
 ### Prerequisites
 
-- Flutter 3.29+
+- Flutter 3.38+
 - Supabase CLI
 - Docker / OrbStack (for local Supabase)
-- Stripe account (test keys)
 
 ### Run locally
 
@@ -59,26 +58,28 @@ cd fahrbar
 supabase start
 supabase db reset
 
-# 3. Create supabase/functions/.env with your Stripe secret key
-echo "STRIPE_SECRET_KEY=sk_test_..." > supabase/functions/.env
-
-# 4. Serve Edge Functions
-supabase functions serve --env-file supabase/functions/.env &
-
-# 5. Run on device
+# 3. Run the app
 flutter run \
   --dart-define=SUPABASE_URL=http://127.0.0.1:54321 \
-  --dart-define=SUPABASE_ANON_KEY=<anon-key-from-supabase-start> \
-  --dart-define=STRIPE_PK=pk_test_...
+  --dart-define=SUPABASE_ANON_KEY=<anon-key-from-supabase-start>
 ```
 
-For physical device testing, replace `127.0.0.1` with your Mac's LAN IP (`ipconfig getifaddr en0`).
+The local anon key is printed by `supabase start` or via `supabase status -o env`. For testing on a physical device, replace `127.0.0.1` with your machine's LAN IP.
 
-The local anon key is printed by `supabase start` or via `supabase status -o env`.
+### Carsharing payments (paused)
+
+The carsharing prototype pays via Stripe. To try it with test keys:
+
+```bash
+echo "STRIPE_SECRET_KEY=sk_test_..." > supabase/functions/.env
+supabase functions serve --env-file supabase/functions/.env &
+```
+
+Then add `--dart-define=STRIPE_PK=pk_test_...` to `flutter run`. Stripe is not available in the web build.
 
 ### Seed data
 
-`supabase db reset` automatically runs `supabase/seed.sql`, which creates a test owner account and 5 cars in Munich:
+`supabase db reset` automatically runs `supabase/seed.sql`, which creates a test owner account and 5 cars around Freiburg:
 
 | Email | Password |
 |---|---|
@@ -86,9 +87,17 @@ The local anon key is printed by `supabase start` or via `supabase status -o env
 
 ---
 
+## What's in the code today
+
+- Email sign-in. The Apple and Google buttons exist, but the OAuth redirect setup is still missing.
+- Carsharing prototype: map with nearby cars (PostGIS), car detail, listing form, booking with Stripe payment, owner confirm/reject, in-booking chat, reviews.
+- Not production-ready: access rules (RLS) and payments need hardening before any real use.
+
+---
+
 ## Architecture
 
-Feature-first, with a strict domain / data / presentation split per feature. All backend access goes through abstract repository interfaces — the Supabase implementation is one line away from being swapped out.
+Feature-first, with a domain / data / presentation split per feature. Feature code talks to abstract repository interfaces; the Supabase implementations live in `data/`.
 
 ```
 lib/
@@ -111,36 +120,28 @@ supabase/
   seed.sql      test data
 ```
 
----
-
-## Feature overview
-
-| Feature | Status |
-|---|---|
-| Auth (Email · Apple · Google) | ✅ |
-| Map with nearby cars (PostGIS) | ✅ |
-| Car detail screen | ✅ |
-| Car listing form (GPS position) | ✅ |
-| Booking flow with Stripe payment | ✅ |
-| Owner: accept / reject bookings | ✅ |
-| Reviews (star rating + comment) | ✅ |
-| In-booking chat (Supabase Realtime) | ✅ |
-| Profile + booking history | ✅ |
-| Driver service flow | Phase 3 |
-| Push notifications | Phase 3 |
-| Lightning payments (LNbits) | Phase 3 |
-| SmartCar API integration | Phase 3 |
+Decisions are recorded in [`docs/decisions/`](docs/decisions/).
 
 ---
 
 ## Roadmap
 
-- **Phase 1 (done):** Core loop — list, find, book, pay
-- **Phase 2:** Trust & Safety — damage reports, disputes, ID verification, Stripe Connect payouts
-- **Phase 3:** Driver service, smart lock integration, Lightning Network
+**Pilot**
+
+1. Talk to practices in Freiburg: would they accept a fahrbar driver as the pick-up after sedation?
+2. Free test rides with a small, vetted driver team.
+3. Paid rides once demand is confirmed: legal and insurance setup, fixed price, invoice after the ride.
+
+**App (in parallel)**
+
+- Web booking for patients
+- Driver app for iOS and Android via TestFlight
+- Admin view for assigning rides
+
+**Later:** more drivers and cities, data export, and the protocol vision.
 
 ---
 
 ## License
 
-MIT
+[MIT](LICENSE)
