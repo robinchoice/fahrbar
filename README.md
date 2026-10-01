@@ -31,7 +31,7 @@ Why fahrbar changed course: [ADR 002](docs/decisions/002-fahrer-service-pilot.md
 
 | Layer | Technology |
 |---|---|
-| App | Flutter 3.38+ (iOS/Android app for drivers, web version for booking) |
+| App | Flutter 3.41.6+ (iOS/Android app for drivers, web version for booking) |
 | State | Riverpod 2.x |
 | Backend | Supabase (PostgreSQL + PostGIS + Realtime + Auth + Edge Functions), self-hostable |
 | Maps | flutter_map + OpenStreetMap |
@@ -43,7 +43,7 @@ Why fahrbar changed course: [ADR 002](docs/decisions/002-fahrer-service-pilot.md
 
 ### Prerequisites
 
-- Flutter 3.38+
+- Flutter 3.41.6+
 - Supabase CLI
 - Docker / OrbStack (for local Supabase)
 
@@ -89,8 +89,10 @@ Then add `--dart-define=STRIPE_PK=pk_test_...` to `flutter run`. Stripe is not a
 
 ## What's in the code today
 
-- Email sign-in. The Apple and Google buttons exist, but the OAuth redirect setup is still missing.
-- Carsharing prototype: map with nearby cars (PostGIS), car detail, listing form, booking with Stripe payment, owner confirm/reject, in-booking chat, reviews.
+- Email sign-in. The Apple and Google buttons exist, but neither provider is enabled and the OAuth redirect isn't set up yet.
+- Carsharing prototype: map with nearby cars (PostGIS), car detail, listing form, booking with Stripe payment, owner confirm/reject.
+- In-booking chat, but not live yet: `messages` isn't in the Realtime publication.
+- Reviews: the rate button only shows for `completed` bookings, and nothing sets that status yet. Reviews aren't displayed anywhere.
 - Not production-ready: access rules (RLS) and payments need hardening before any real use.
 
 ---

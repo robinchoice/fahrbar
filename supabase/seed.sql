@@ -1,4 +1,4 @@
--- Seed: Test-Anbieter + Autos in München
+-- Seed: Test-Anbieter + Autos in Freiburg
 DO $$
 DECLARE
   owner_id UUID := '00000000-0000-0000-0000-000000000001';
