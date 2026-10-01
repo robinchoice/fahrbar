@@ -7,6 +7,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/cars/presentation/car_detail_screen.dart';
 import '../../features/cars/presentation/car_listing_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/messages/presentation/chat_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -51,10 +52,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/booking/:id',
-        name: 'booking-detail',
-        builder: (context, state) => _PlaceholderScreen(
-          title: 'Booking: ${state.pathParameters['id']}',
+        path: '/bookings/:id/chat',
+        name: 'chat',
+        builder: (context, state) => ChatScreen(
+          bookingId: state.pathParameters['id']!,
         ),
       ),
     ],
@@ -64,18 +65,5 @@ final routerProvider = Provider<GoRouter>((ref) {
 class _AuthStatusListenable extends ChangeNotifier {
   _AuthStatusListenable(Ref ref) {
     ref.listen(authNotifierProvider, (_, next) => notifyListeners());
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  const _PlaceholderScreen({required this.title});
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text(title)),
-    );
   }
 }
