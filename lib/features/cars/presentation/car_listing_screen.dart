@@ -113,6 +113,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
           );
 
       if (mounted) {
+        ref.invalidate(nearbyCarsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Auto erfolgreich eingestellt!')),
         );

@@ -9,13 +9,15 @@ final bookingRepositoryProvider = Provider<BookingRepository>((ref) {
   return SupabaseBookingRepository(ref.read(supabaseClientProvider));
 });
 
+// autoDispose: refetched each time the profile opens, so new bookings and
+// incoming requests show up
 final userBookingsProvider =
-    FutureProvider.family<List<Booking>, String>((ref, userId) {
+    FutureProvider.autoDispose.family<List<Booking>, String>((ref, userId) {
   return ref.read(bookingRepositoryProvider).getForUser(userId);
 });
 
 final ownerBookingsProvider =
-    FutureProvider.family<List<Booking>, String>((ref, ownerId) {
+    FutureProvider.autoDispose.family<List<Booking>, String>((ref, ownerId) {
   return ref.read(bookingRepositoryProvider).getForOwner(ownerId);
 });
 
