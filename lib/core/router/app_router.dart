@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/domain/auth_notifier.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/cars/presentation/car_detail_screen.dart';
+import '../../features/cars/presentation/car_listing_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 
@@ -36,6 +37,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/cars/new',
+        name: 'car-new',
+        builder: (context, state) => const CarListingScreen(),
       ),
       GoRoute(
         path: '/cars/:id',
