@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
@@ -75,6 +76,10 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
   }
 
   Future<void> _submit() async {
+    if (kIsWeb) {
+      setState(() => _error = 'Buchen ist im Browser noch nicht möglich. Bitte nutze die App.');
+      return;
+    }
     if (_startTime == null || _endTime == null) {
       setState(() => _error = 'Bitte Start- und Endzeit auswählen.');
       return;

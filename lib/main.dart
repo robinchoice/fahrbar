@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
@@ -13,8 +14,10 @@ Future<void> main() async {
     anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY'),
   );
 
-  Stripe.publishableKey = const String.fromEnvironment('STRIPE_PK');
-  await Stripe.instance.applySettings();
+  if (!kIsWeb) {
+    Stripe.publishableKey = const String.fromEnvironment('STRIPE_PK');
+    await Stripe.instance.applySettings();
+  }
 
   runApp(
     const ProviderScope(
