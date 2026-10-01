@@ -66,6 +66,19 @@ flutter run \
 
 The local anon key is printed by `supabase start` or via `supabase status -o env`. For testing on a physical device, replace `127.0.0.1` with your machine's LAN IP.
 
+### Apple and Google sign-in
+
+Both providers are enabled in `supabase/config.toml` and read their credentials from `supabase/.env` (gitignored):
+
+```bash
+SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID=...
+SUPABASE_AUTH_EXTERNAL_APPLE_SECRET=...
+SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=...
+SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=...
+```
+
+The iOS and Android apps come back through the deep link `de.fahrbar://login-callback`, the web build through `site_url`. Locally that is `http://127.0.0.1:3000`, so start the web app with `flutter run -d chrome --web-hostname 127.0.0.1 --web-port 3000`.
+
 ### Carsharing payments (paused)
 
 The carsharing prototype pays via Stripe. To try it with test keys:
@@ -89,7 +102,7 @@ Then add `--dart-define=STRIPE_PK=pk_test_...` to `flutter run`. Stripe is not a
 
 ## What's in the code today
 
-- Email sign-in. The Apple and Google buttons exist, but neither provider is enabled and the OAuth redirect isn't set up yet.
+- Email sign-in, plus Apple and Google sign-in once their credentials are set (see above).
 - Carsharing prototype: map with nearby cars (PostGIS), car detail, listing form, booking with Stripe payment, owner confirm/reject.
 - In-booking chat, but not live yet: `messages` isn't in the Realtime publication.
 - Reviews: the rate button only shows for `completed` bookings, and nothing sets that status yet. Reviews aren't displayed anywhere.

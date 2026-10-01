@@ -97,6 +97,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     fontSize: 13,
                   ),
                 ),
+              if (authStatus is AuthConfirmationPending)
+                const Text(
+                  'Fast geschafft: Bitte bestätige deine E-Mail-Adresse über '
+                  'den Link, den wir dir geschickt haben.',
+                  style: TextStyle(fontSize: 13),
+                ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: isLoading ? null : _submit,
