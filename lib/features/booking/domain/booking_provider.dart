@@ -14,6 +14,11 @@ final userBookingsProvider =
   return ref.read(bookingRepositoryProvider).getForUser(userId);
 });
 
+final ownerBookingsProvider =
+    FutureProvider.family<List<Booking>, String>((ref, ownerId) {
+  return ref.read(bookingRepositoryProvider).getForOwner(ownerId);
+});
+
 final bookingStreamProvider =
     StreamProvider.family<Booking, String>((ref, bookingId) {
   return ref.read(bookingRepositoryProvider).watch(bookingId);

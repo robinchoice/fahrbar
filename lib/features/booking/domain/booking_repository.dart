@@ -15,6 +15,7 @@ abstract class BookingRepository {
 
   Future<Booking> getById(String id);
   Future<List<Booking>> getForUser(String userId);
+  Future<List<Booking>> getForOwner(String ownerId);
   Future<void> updateStatus(String id, BookingStatus status);
   Stream<Booking> watch(String id);
 }

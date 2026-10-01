@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../auth/domain/auth_notifier.dart';
+import '../../booking/domain/booking.dart';
+import '../../booking/domain/booking_provider.dart';
 import '../../../providers/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -47,30 +49,16 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 32),
+          if (user != null) _BookingsSection(userId: user.id),
+          const SizedBox(height: 16),
+          if (user != null) _OwnerBookingsSection(ownerId: user.id),
+          const SizedBox(height: 16),
           _Section(title: 'Meine Autos', children: [
             ListTile(
-              leading: const Icon(Icons.directions_car),
+              leading: const Icon(Icons.add_circle_outline),
               title: const Text('Auto einstellen'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () {},
-            ),
-          ]),
-          const SizedBox(height: 16),
-          _Section(title: 'Buchungen', children: [
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Meine Buchungen'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {},
-            ),
-          ]),
-          const SizedBox(height: 16),
-          _Section(title: 'Fahrer', children: [
-            ListTile(
-              leading: const Icon(Icons.person_pin_circle),
-              title: const Text('Als Fahrer anbieten'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {},
+              onTap: () => context.push('/cars/new'),
             ),
           ]),
           const SizedBox(height: 16),
@@ -88,6 +76,217 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () {},
             ),
           ]),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookingsSection extends ConsumerWidget {
+  const _BookingsSection({required this.userId});
+  final String userId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bookingsAsync = ref.watch(userBookingsProvider(userId));
+
+    return _Section(
+      title: 'Meine Buchungen',
+      children: [
+        bookingsAsync.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => ListTile(
+            leading: const Icon(Icons.error_outline),
+            title: Text('Fehler: $e'),
+          ),
+          data: (bookings) {
+            if (bookings.isEmpty) {
+              return const ListTile(
+                leading: Icon(Icons.calendar_today),
+                title: Text('Noch keine Buchungen'),
+                subtitle: Text('Finde ein Auto auf der Karte'),
+              );
+            }
+            return Column(
+              children: bookings
+                  .map((b) => _BookingTile(booking: b, userId: userId))
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _BookingTile extends StatelessWidget {
+  const _BookingTile({required this.booking, required this.userId});
+  final Booking booking;
+  final String userId;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (booking.status) {
+      BookingStatus.confirmed => Colors.green,
+      BookingStatus.active => Colors.blue,
+      BookingStatus.completed => Colors.grey,
+      BookingStatus.cancelled || BookingStatus.rejected => Colors.red,
+      BookingStatus.dispute => Colors.orange,
+      BookingStatus.pending => Colors.amber,
+    };
+
+    final statusLabel = switch (booking.status) {
+      BookingStatus.confirmed => 'Bestätigt',
+      BookingStatus.active => 'Aktiv',
+      BookingStatus.completed => 'Abgeschlossen',
+      BookingStatus.cancelled => 'Storniert',
+      BookingStatus.rejected => 'Abgelehnt',
+      BookingStatus.dispute => 'Streitfall',
+      BookingStatus.pending => 'Ausstehend',
+    };
+
+    final start = booking.startTime;
+    final dateStr =
+        '${start.day.toString().padLeft(2, '0')}.${start.month.toString().padLeft(2, '0')}.${start.year}';
+
+    final canReview = booking.status == BookingStatus.completed &&
+        booking.renterId == userId;
+    final revieweeId =
+        booking.renterId == userId ? booking.ownerId : booking.renterId;
+
+    return ListTile(
+      leading: Icon(
+        booking.type == BookingType.carshare
+            ? Icons.directions_car
+            : Icons.person_pin_circle,
+      ),
+      title: Text(dateStr),
+      subtitle: Text('${booking.totalPrice.toStringAsFixed(2)} ${booking.currency}'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline, size: 20),
+            tooltip: 'Chat',
+            onPressed: () => context.push('/bookings/${booking.id}/chat'),
+          ),
+          if (canReview)
+            IconButton(
+              icon: const Icon(Icons.star_border, size: 20, color: Colors.amber),
+              tooltip: 'Bewerten',
+              onPressed: () => context.push(
+                '/bookings/${booking.id}/review?revieweeId=$revieweeId',
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                statusLabel,
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OwnerBookingsSection extends ConsumerWidget {
+  const _OwnerBookingsSection({required this.ownerId});
+  final String ownerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bookingsAsync = ref.watch(ownerBookingsProvider(ownerId));
+
+    return _Section(
+      title: 'Eingehende Anfragen',
+      children: [
+        bookingsAsync.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => ListTile(
+            leading: const Icon(Icons.error_outline),
+            title: Text('Fehler: $e'),
+          ),
+          data: (bookings) {
+            final pending = bookings
+                .where((b) => b.status == BookingStatus.pending)
+                .toList();
+            if (pending.isEmpty) {
+              return const ListTile(
+                leading: Icon(Icons.inbox),
+                title: Text('Keine offenen Anfragen'),
+              );
+            }
+            return Column(
+              children: pending.map((b) => _OwnerBookingTile(booking: b, ref: ref)).toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _OwnerBookingTile extends StatelessWidget {
+  const _OwnerBookingTile({required this.booking, required this.ref});
+  final Booking booking;
+  final WidgetRef ref;
+
+  Future<void> _updateStatus(BuildContext context, BookingStatus status) async {
+    try {
+      await ref.read(bookingRepositoryProvider).updateStatus(booking.id, status);
+      ref.invalidate(ownerBookingsProvider(booking.ownerId));
+      if (context.mounted) {
+        final msg = status == BookingStatus.confirmed ? 'Bestätigt!' : 'Abgelehnt.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Fehler: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final start = booking.startTime;
+    final dateStr =
+        '${start.day.toString().padLeft(2, '0')}.${start.month.toString().padLeft(2, '0')}.${start.year}';
+
+    return ListTile(
+      leading: const Icon(Icons.directions_car),
+      title: Text(dateStr),
+      subtitle: Text('${booking.totalPrice.toStringAsFixed(2)} ${booking.currency}'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.check_circle, color: Colors.green),
+            tooltip: 'Bestätigen',
+            onPressed: () => _updateStatus(context, BookingStatus.confirmed),
+          ),
+          IconButton(
+            icon: const Icon(Icons.cancel, color: Colors.red),
+            tooltip: 'Ablehnen',
+            onPressed: () => _updateStatus(context, BookingStatus.rejected),
+          ),
         ],
       ),
     );
