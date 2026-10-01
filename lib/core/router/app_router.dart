@@ -9,6 +9,7 @@ import '../../features/cars/presentation/car_listing_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/messages/presentation/chat_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/reviews/presentation/review_form.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -56,6 +57,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'chat',
         builder: (context, state) => ChatScreen(
           bookingId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/bookings/:id/review',
+        name: 'review',
+        builder: (context, state) => ReviewFormScreen(
+          bookingId: state.pathParameters['id']!,
+          revieweeId: state.uri.queryParameters['revieweeId']!,
         ),
       ),
     ],
