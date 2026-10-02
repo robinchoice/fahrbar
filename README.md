@@ -6,13 +6,14 @@ fahrbar is an open-source platform for driver services. A vetted driver comes to
 
 We're starting small: a pilot in Freiburg im Breisgau for patients who aren't allowed to drive after an outpatient procedure (sedation, e.g. a colonoscopy, or pupil-dilating eye drops). Rides are booked in advance and driven by a small, personally vetted team.
 
-Why fahrbar changed course: [ADR 002](docs/decisions/002-fahrer-service-pilot.md).
+Why fahrbar changed course: [ADR 002](docs/decisions/002-fahrer-service-pilot.md). How it makes money and where it's headed: [ADR 003](docs/decisions/003-offenes-netz-bezahltes-team.md).
 
 ---
 
 ## Principles
 
-- **Open** — The code is open source and can be forked and self-hosted. Users will be able to export their data. A shared protocol between independent operators stays a long-term vision until a second operator or client actually wants to connect.
+- **Open** — The code is open source and can be forked and self-hosted. Users will be able to export their data. Long term, fahrbar is meant to grow into an open network modeled on Vexl: you find drivers and cars through people you know, and matching is free.
+- **Private** — Ride details are end-to-end encrypted, so only the team driving you can read them. Keys instead of accounts. You pay in cash and get a receipt without your name.
 - **Fair** — Nobody gets locked out without a reason and a way to appeal. Bans follow published rules, come with a justification and can be appealed.
 - **Transparent** — A fixed price per ride with an open breakdown (driver wage, insurance, fahrbar) instead of a hidden commission.
 
@@ -23,7 +24,7 @@ Why fahrbar changed course: [ADR 002](docs/decisions/002-fahrer-service-pilot.md
 | Service | Status |
 |---|---|
 | **Driver service** — a vetted driver takes you home in your own car | Pilot in preparation (Freiburg) |
-| **Carsharing** — rent out your car or rent someone else's | Paused, prototype code stays in the repo |
+| **Carsharing** — rent out your car or rent someone else's | Planned after the pilot, with group insurance. Prototype code stays in the repo |
 
 ---
 
@@ -31,11 +32,11 @@ Why fahrbar changed course: [ADR 002](docs/decisions/002-fahrer-service-pilot.md
 
 | Layer | Technology |
 |---|---|
-| App | Flutter 3.41.6+ (iOS/Android app for drivers, web version for booking) |
+| App | Flutter 3.41.6+ (web booking in the pilot, iOS/Android app for drivers later) |
 | State | Riverpod 2.x |
 | Backend | Supabase (PostgreSQL + PostGIS + Realtime + Auth), self-hostable |
 | Maps | flutter_map + OpenStreetMap |
-| Payments | Invoice after the ride during the pilot, no in-app payment |
+| Payments | Cash during the pilot, counted out in advance, receipt without a name. No in-app payment |
 
 ---
 
@@ -132,17 +133,15 @@ Decisions are recorded in [`docs/decisions/`](docs/decisions/).
 
 **Pilot**
 
-1. Talk to practices in Freiburg: would they accept a fahrbar driver as the pick-up after sedation?
-2. Free test rides with a small, vetted driver team.
-3. Paid rides once demand is confirmed: legal and insurance setup, fixed price, invoice after the ride.
+1. Talk to practices in Freiburg: would they accept a fahrbar driver as the pick-up after sedation, and would they put patients without an escort on two fixed fahrbar mornings a week?
+2. Free test rides on those mornings, driven by ourselves.
+3. Paid rides once demand is confirmed: legal and insurance setup, fixed price, paid in cash. A minijob driver joins once a morning has had at least three pick-ups four weeks in a row.
 
 **App (in parallel)**
 
-- Web booking for patients
-- Driver app for iOS and Android via TestFlight
-- Admin view for assigning rides
+- Web booking form for patients, with ride details end-to-end encrypted so only the team can read them
 
-**Later:** more drivers and cities, data export, and the protocol vision.
+**Later:** a driver app once there are drivers to assign, carsharing with group insurance, the open network, more cities and data export.
 
 ---
 

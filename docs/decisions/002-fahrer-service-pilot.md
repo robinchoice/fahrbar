@@ -1,6 +1,6 @@
 # ADR 002 — Neuausrichtung: Fahrer-Service-Pilot statt Mobilitätsprotokoll
 
-**Status:** Accepted  
+**Status:** Accepted, teilweise abgelöst durch [ADR 003](003-offenes-netz-bezahltes-team.md)  
 **Datum:** 2026-10-01  
 **Kontext:** fahrbar — Philosophie-Workshop
 
