@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/brand.dart';
+import '../../../core/messages.dart';
 import '../domain/car.dart';
 import '../../booking/presentation/booking_flow.dart';
 import '../../reviews/domain/review_provider.dart';
@@ -12,6 +13,7 @@ class CarDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.t;
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.85,
@@ -92,12 +94,12 @@ class CarDetailSheet extends StatelessWidget {
                                 const Icon(Icons.star, size: 17, color: ink),
                                 const SizedBox(width: 6),
                                 Text(
-                                  car.ratingAvg.toStringAsFixed(1),
+                                  t.rating(car.ratingAvg),
                                   style: display(18, color: ink),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  '(${car.ratingCount} Bewertungen)',
+                                  t.reviewCount(car.ratingCount),
                                   style: const TextStyle(fontSize: 14),
                                 ),
                               ],
@@ -143,11 +145,11 @@ class CarDetailSheet extends StatelessWidget {
                         const SizedBox(height: 20),
                         // Features
                         if (car.features.isNotEmpty) ...[
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                             child: Text(
-                              'Ausstattung',
-                              style: TextStyle(
+                              t.features,
+                              style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                           ),
@@ -195,7 +197,7 @@ class CarDetailSheet extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                   child: ElevatedButton(
                     onPressed: () => _openBookingFlow(context),
-                    child: const Text('Jetzt buchen'),
+                    child: Text(t.bookNow),
                   ),
                 ),
               ),
@@ -224,38 +226,32 @@ class _SpecsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.t;
     return Row(
       children: [
         Expanded(
           child: _SpecCell(
             icon: Icons.people_outline,
-            label: '${car.seats} Sitze',
+            label: t.seats(car.seats),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _SpecCell(
             icon: Icons.local_gas_station_outlined,
-            label: _fuelLabel(car.fuelType),
+            label: t.fuel(car.fuelType),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _SpecCell(
             icon: Icons.settings_outlined,
-            label: car.transmission == 'automatic' ? 'Automatik' : 'Schaltung',
+            label: t.transmission(car.transmission),
           ),
         ),
       ],
     );
   }
-
-  String _fuelLabel(String f) => switch (f) {
-        'electric' => 'Elektro',
-        'diesel' => 'Diesel',
-        'hybrid' => 'Hybrid',
-        _ => 'Benzin',
-      };
 }
 
 class _SpecCell extends StatelessWidget {
@@ -295,6 +291,7 @@ class _PriceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.t;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -307,12 +304,12 @@ class _PriceRow extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  '${car.pricePerHour.toStringAsFixed(2)} ${car.currency}',
+                  t.money(car.pricePerHour, car.currency),
                   style: display(28, color: ink),
                 ),
                 const SizedBox(height: 2),
-                const Text('pro Stunde',
-                    style: TextStyle(fontSize: 12, color: muted)),
+                Text(t.perHour,
+                    style: const TextStyle(fontSize: 12, color: muted)),
               ],
             ),
           ),
@@ -321,12 +318,12 @@ class _PriceRow extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  '${car.pricePerDay.toStringAsFixed(2)} ${car.currency}',
+                  t.money(car.pricePerDay, car.currency),
                   style: display(28, color: ink),
                 ),
                 const SizedBox(height: 2),
-                const Text('pro Tag',
-                    style: TextStyle(fontSize: 12, color: muted)),
+                Text(t.perDay,
+                    style: const TextStyle(fontSize: 12, color: muted)),
               ],
             ),
           ),
@@ -350,9 +347,9 @@ class _Reviews extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Bewertungen',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          Text(
+            context.t.reviews,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           for (final review in reviews)
             Padding(
@@ -370,7 +367,7 @@ class _Reviews extends ConsumerWidget {
                         ),
                       const SizedBox(width: 6),
                       Text(
-                        _formatDate(review.createdAt.toLocal()),
+                        context.t.date(review.createdAt.toLocal()),
                         style: const TextStyle(fontSize: 12, color: muted),
                       ),
                     ],
@@ -386,7 +383,4 @@ class _Reviews extends ConsumerWidget {
       ),
     );
   }
-
-  String _formatDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 }

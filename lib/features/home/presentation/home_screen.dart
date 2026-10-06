@@ -10,6 +10,7 @@ import '../../cars/domain/car.dart';
 import '../../cars/domain/cars_provider.dart';
 import '../../cars/presentation/car_detail_sheet.dart';
 import '../../../core/brand.dart';
+import '../../../core/messages.dart';
 
 const _defaultCenter = LatLng(47.999, 7.842); // Freiburg im Breisgau
 
@@ -85,21 +86,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final cars = carsAsync.valueOrNull ?? <Car>[];
     final mode = ref.watch(_mapModeProvider);
     final wide = MediaQuery.sizeOf(context).width >= _wideLayout;
+    final t = context.t;
 
     // Center the map on a fresh GPS fix, or say why there is none
     ref.listen(_userLocationProvider, (prev, next) {
       if (next.isLoading) return;
       if (next.hasError) {
         final reason = switch (next.error) {
-          LocationServiceDisabledException() =>
-            'Die Ortungsdienste sind ausgeschaltet.',
-          PermissionDeniedException() =>
-            'fahrbar hat keinen Zugriff auf deinen Standort.',
-          _ => 'Dein Standort ist gerade nicht verfügbar.',
+          LocationServiceDisabledException() => t.locationOff,
+          PermissionDeniedException() => t.locationDenied,
+          _ => t.locationUnavailable,
         };
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$reason Du siehst Autos rund um Freiburg.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(t.showingFreiburg(reason))));
       } else if (next.hasValue) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _mapController.move(next.value!, 14);
@@ -108,12 +108,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
 
     final searchField = _SearchField(
-      hint: mode == MapMode.carshare ? 'Auto suchen…' : 'Fahrer finden…',
+      hint: mode == MapMode.carshare ? t.searchCar : t.findDriver,
       flat: wide,
     );
     final profileButton = _RoundButton(
       icon: Icons.person_outline,
-      tooltip: 'Profil',
+      tooltip: t.profile,
       flat: wide,
       onTap: () => context.push('/profile'),
     );
@@ -181,7 +181,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           width: 76,
                           height: 40,
                           child: _PriceMarker(
-                            label: '${c.pricePerHour.toStringAsFixed(0)}€/h',
+                            label: t.markerPrice(c.pricePerHour),
                             selected: c.id == _selectedCarId,
                             onTap: () => _openCarDetail(c),
                           ),
@@ -242,7 +242,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             bottom: mapBottom + 16,
             child: _RoundButton(
               icon: Icons.gps_fixed,
-              tooltip: 'Mein Standort',
+              tooltip: t.myLocation,
               onTap: () {
                 if (userLocation != null) {
                   _mapController.move(userLocation, 14);
@@ -516,6 +516,7 @@ class _CarList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.t;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -527,20 +528,22 @@ class _CarList extends StatelessWidget {
               Expanded(
                 child: Text(
                   isLoading
-                      ? 'Suche Autos…'
+                      ? t.searchingCars
                       : cars.isEmpty
-                      ? 'Keine Autos in der Nähe'
-                      : '${cars.length} ${mode == MapMode.carshare ? 'Autos' : 'Fahrer'} in der Nähe',
+                      ? t.noCarsNearby
+                      : mode == MapMode.carshare
+                      ? t.carsNearby(cars.length)
+                      : t.driversNearby(cars.length),
                   style: display(24, color: ink),
                 ),
               ),
               _ModeTab(
-                label: 'Auto',
+                label: t.tabCar,
                 selected: mode == MapMode.carshare,
                 onTap: () => onModeChange(MapMode.carshare),
               ),
               _ModeTab(
-                label: 'Fahrer',
+                label: t.tabDriver,
                 selected: mode == MapMode.driver,
                 onTap: () => onModeChange(MapMode.driver),
               ),
@@ -552,10 +555,10 @@ class _CarList extends StatelessWidget {
           child: isLoading
               ? const Center(child: CircularProgressIndicator())
               : cars.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
-                    'Im Umkreis von 10 km ist gerade kein Auto frei.',
-                    style: TextStyle(color: muted, fontSize: 13),
+                    t.noCarFree,
+                    style: const TextStyle(color: muted, fontSize: 13),
                   ),
                 )
               : ListView.separated(
@@ -638,6 +641,7 @@ class _CarListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const meta = TextStyle(fontSize: 13, color: muted);
+    final t = context.t;
     return Material(
       color: selected ? soft : Colors.transparent,
       child: InkWell(
@@ -679,7 +683,7 @@ class _CarListTile extends StatelessWidget {
                               child: Icon(Icons.star, size: 13, color: ink),
                             ),
                             TextSpan(
-                              text: ' ${car.ratingAvg.toStringAsFixed(1)}',
+                              text: ' ${t.rating(car.ratingAvg)}',
                               style: const TextStyle(
                                 color: ink,
                                 fontWeight: FontWeight.w600,
@@ -687,12 +691,8 @@ class _CarListTile extends StatelessWidget {
                             ),
                             const TextSpan(text: ' · '),
                           ],
-                          TextSpan(text: '${_fuelLabel(car.fuelType)} · '),
-                          TextSpan(
-                            text: car.transmission == 'automatic'
-                                ? 'Automatik'
-                                : 'Schaltung',
-                          ),
+                          TextSpan(text: '${t.fuel(car.fuelType)} · '),
+                          TextSpan(text: t.transmission(car.transmission)),
                         ],
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -705,12 +705,12 @@ class _CarListTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${car.pricePerHour.toStringAsFixed(0)} €',
+                    t.listPrice(car.pricePerHour),
                     style: display(22, color: ink),
                   ),
-                  const Text(
-                    '/Std',
-                    style: TextStyle(fontSize: 12, color: muted),
+                  Text(
+                    t.perHourShort,
+                    style: const TextStyle(fontSize: 12, color: muted),
                   ),
                 ],
               ),
@@ -720,11 +720,4 @@ class _CarListTile extends StatelessWidget {
       ),
     );
   }
-
-  String _fuelLabel(String f) => switch (f) {
-    'electric' => 'Elektro',
-    'diesel' => 'Diesel',
-    'hybrid' => 'Hybrid',
-    _ => 'Benzin',
-  };
 }

@@ -69,6 +69,16 @@ The local anon key is printed by `supabase start` or via `supabase status -o env
 
 The map loads the public OpenStreetMap tiles, which are only meant for light use such as development. Release builds need a tile provider that allows app use: `--dart-define=MAP_TILE_URL=https://…/{z}/{x}/{y}.png`.
 
+### Web build
+
+Build the web app with `--no-web-resources-cdn`. Without it Flutter loads CanvasKit and the Roboto font from Google's servers on every page view; with it everything comes from our own host:
+
+```bash
+flutter build web --no-web-resources-cdn \
+  --dart-define=SUPABASE_URL=… \
+  --dart-define=SUPABASE_ANON_KEY=…
+```
+
 ### Apple and Google sign-in
 
 Both providers are enabled in `supabase/config.toml` and read their credentials from `supabase/.env` (gitignored):
@@ -98,6 +108,7 @@ The iOS and Android apps come back through the deep link `de.fahrbar://login-cal
 - Carsharing prototype: map with nearby cars (PostGIS), car detail, listing form, booking requests without payment that the owner confirms or rejects.
 - In-booking chat with live updates via Supabase Realtime.
 - Reviews: once the owner confirms the return, the renter can rate the rental. Reviews and ratings show up on the car.
+- German and English, switchable in the footer. The choice is remembered, otherwise the app follows the device language. All texts live in `lib/core/messages.dart`.
 
 ---
 
@@ -116,7 +127,7 @@ lib/
     profile/     presentation
     home/        presentation
   core/
-    theme · router · brand (Pleasance band, tile, footer)
+    theme · router · brand (Pleasance band, tile, footer) · messages · locale
   config.dart    section of the family colour band
   providers/
     supabase_provider · auth_provider

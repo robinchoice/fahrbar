@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/brand.dart';
+import '../../../core/messages.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../domain/message.dart';
 import '../domain/message_provider.dart';
@@ -68,19 +69,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final messagesAsync = ref.watch(chatStreamProvider(widget.bookingId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Chat')),
+      appBar: AppBar(title: Text(context.t.chat)),
       body: Column(
         children: [
           Expanded(
             child: messagesAsync.when(
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Fehler: $e')),
+              error: (e, _) => Center(child: Text(context.t.error(e))),
               data: (messages) {
                 if (messages.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
-                      'Noch keine Nachrichten.\nSchreib die erste!',
+                      context.t.noMessages,
                       textAlign: TextAlign.center,
                     ),
                   );
@@ -163,7 +164,7 @@ class _InputBar extends StatelessWidget {
                 controller: ctrl,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  hintText: 'Nachricht...',
+                  hintText: context.t.messageHint,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: const BorderSide(color: hairline),
@@ -184,7 +185,7 @@ class _InputBar extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Tooltip(
-              message: 'Senden',
+              message: context.t.send,
               child: Opacity(
                 opacity: sending ? 0.5 : 1,
                 child: Material(

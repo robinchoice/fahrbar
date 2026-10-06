@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/brand.dart';
+import '../../../core/messages.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../../booking/domain/booking.dart';
 import '../../booking/domain/booking_provider.dart';
@@ -16,15 +17,16 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final t = context.t;
 
     return Scaffold(
       bottomNavigationBar: const PleasanceFooter(),
       appBar: AppBar(
-        title: const Text('Profil'),
+        title: Text(t.profile),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Abmelden',
+            tooltip: t.logOut,
             onPressed: () async {
               await ref.read(authNotifierProvider.notifier).signOut();
               if (context.mounted) context.go('/login');
@@ -69,25 +71,25 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           if (user != null) _OwnerBookingsSection(ownerId: user.id),
           const SizedBox(height: 16),
-          _Section(title: 'Meine Autos', children: [
+          _Section(title: t.myCars, children: [
             ListTile(
               leading: const Icon(Icons.add_circle_outline),
-              title: const Text('Auto einstellen'),
+              title: Text(t.listCar),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/cars/new'),
             ),
           ]),
           const SizedBox(height: 16),
-          _Section(title: 'Konto', children: [
+          _Section(title: t.account, children: [
             ListTile(
               leading: const Icon(Icons.verified_user),
-              title: const Text('Führerschein verifizieren'),
+              title: Text(t.verifyLicence),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {},
             ),
             ListTile(
               leading: const Icon(Icons.payment),
-              title: const Text('Zahlungsmethoden'),
+              title: Text(t.paymentMethods),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {},
             ),
@@ -105,9 +107,10 @@ class _BookingsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bookingsAsync = ref.watch(userBookingsProvider(userId));
+    final t = context.t;
 
     return _Section(
-      title: 'Meine Buchungen',
+      title: t.myBookings,
       children: [
         bookingsAsync.when(
           loading: () => const Padding(
@@ -116,14 +119,14 @@ class _BookingsSection extends ConsumerWidget {
           ),
           error: (e, _) => ListTile(
             leading: const Icon(Icons.error_outline),
-            title: Text('Fehler: $e'),
+            title: Text(t.error(e)),
           ),
           data: (bookings) {
             if (bookings.isEmpty) {
-              return const ListTile(
-                leading: Icon(Icons.calendar_today),
-                title: Text('Noch keine Buchungen'),
-                subtitle: Text('Finde ein Auto auf der Karte'),
+              return ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: Text(t.noBookings),
+                subtitle: Text(t.findCarOnMap),
               );
             }
             return Column(
@@ -162,19 +165,9 @@ class _BookingTile extends StatelessWidget {
       _ => false,
     };
 
-    final statusLabel = switch (booking.status) {
-      BookingStatus.confirmed => 'Bestätigt',
-      BookingStatus.active => 'Aktiv',
-      BookingStatus.completed => 'Abgeschlossen',
-      BookingStatus.cancelled => 'Storniert',
-      BookingStatus.rejected => 'Abgelehnt',
-      BookingStatus.dispute => 'Streitfall',
-      BookingStatus.pending => 'Ausstehend',
-    };
-
-    final start = booking.startTime;
-    final dateStr =
-        '${start.day.toString().padLeft(2, '0')}.${start.month.toString().padLeft(2, '0')}.${start.year}';
+    final t = context.t;
+    final statusLabel = t.status(booking.status.name);
+    final dateStr = t.date(booking.startTime);
 
     final canReview = booking.status == BookingStatus.completed &&
         booking.renterId == userId;
@@ -189,19 +182,19 @@ class _BookingTile extends StatelessWidget {
         color: muted,
       ),
       title: Text(dateStr, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text('${booking.totalPrice.toStringAsFixed(2)} ${booking.currency}'),
+      subtitle: Text(t.money(booking.totalPrice, booking.currency)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline, size: 20),
-            tooltip: 'Chat',
+            tooltip: t.chat,
             onPressed: () => context.push('/bookings/${booking.id}/chat'),
           ),
           if (canReview)
             IconButton(
               icon: const Icon(Icons.star_border, size: 20),
-              tooltip: 'Bewerten',
+              tooltip: t.rate,
               onPressed: () => context.push(
                 '/bookings/${booking.id}/review?revieweeId=$revieweeId',
               ),
@@ -221,9 +214,10 @@ class _OwnerBookingsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bookingsAsync = ref.watch(ownerBookingsProvider(ownerId));
+    final t = context.t;
 
     return _Section(
-      title: 'Anfragen und Vermietungen',
+      title: t.requestsAndRentals,
       children: [
         bookingsAsync.when(
           loading: () => const Padding(
@@ -232,7 +226,7 @@ class _OwnerBookingsSection extends ConsumerWidget {
           ),
           error: (e, _) => ListTile(
             leading: const Icon(Icons.error_outline),
-            title: Text('Fehler: $e'),
+            title: Text(t.error(e)),
           ),
           data: (bookings) {
             // Requests to answer and rentals whose return is still open
@@ -242,9 +236,9 @@ class _OwnerBookingsSection extends ConsumerWidget {
                     b.status == BookingStatus.confirmed)
                 .toList();
             if (open.isEmpty) {
-              return const ListTile(
-                leading: Icon(Icons.inbox),
-                title: Text('Keine offenen Anfragen'),
+              return ListTile(
+                leading: const Icon(Icons.inbox),
+                title: Text(t.noOpenRequests),
               );
             }
             return Column(
@@ -269,37 +263,38 @@ class _OwnerBookingTile extends StatelessWidget {
       ref.invalidate(userBookingsProvider(booking.ownerId));
       if (context.mounted) {
         final msg = switch (status) {
-          BookingStatus.confirmed => 'Bestätigt!',
-          BookingStatus.completed => 'Rückgabe bestätigt.',
-          _ => 'Abgelehnt.',
+          BookingStatus.confirmed => context.t.confirmed,
+          BookingStatus.completed => context.t.returnConfirmed,
+          _ => context.t.declined,
         };
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Fehler: $e')));
+            .showSnackBar(SnackBar(content: Text(context.t.error(e))));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final start = booking.startTime;
-    final dateStr =
-        '${start.day.toString().padLeft(2, '0')}.${start.month.toString().padLeft(2, '0')}.${start.year}';
+    final t = context.t;
 
     return ListTile(
       leading: const Icon(Icons.directions_car, color: muted),
-      title: Text(dateStr, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text('${booking.totalPrice.toStringAsFixed(2)} ${booking.currency}'),
+      title: Text(
+        t.date(booking.startTime),
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(t.money(booking.totalPrice, booking.currency)),
       trailing: booking.status == BookingStatus.pending
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
                   icon: const Icon(Icons.close, color: muted),
-                  tooltip: 'Ablehnen',
+                  tooltip: t.decline,
                   onPressed: () => _updateStatus(context, BookingStatus.rejected),
                 ),
                 OutlinedButton.icon(
@@ -309,7 +304,7 @@ class _OwnerBookingTile extends StatelessWidget {
                     textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                   icon: const Icon(Icons.check_circle, size: 20),
-                  label: const Text('Bestätigen'),
+                  label: Text(t.confirm),
                   onPressed: () => _updateStatus(context, BookingStatus.confirmed),
                 ),
               ],
@@ -318,9 +313,12 @@ class _OwnerBookingTile extends StatelessWidget {
           : booking.startTime.isBefore(DateTime.now())
               ? TextButton(
                   onPressed: () => _updateStatus(context, BookingStatus.completed),
-                  child: const Text('Rückgabe bestätigen'),
+                  child: Text(t.confirmReturn),
                 )
-              : StatusChip(label: 'Bestätigt', dot: StatusChip.filled(ink)),
+              : StatusChip(
+                  label: t.status('confirmed'),
+                  dot: StatusChip.filled(ink),
+                ),
     );
   }
 }

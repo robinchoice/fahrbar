@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/brand.dart';
+import '../../../core/messages.dart';
 import '../domain/auth_notifier.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -46,6 +47,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     });
 
+    final t = context.t;
     final isLoading = authStatus is AuthLoading;
     final errorMessage = authStatus is AuthError ? authStatus.message : null;
 
@@ -69,21 +71,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _isSignUp ? 'Konto erstellen' : 'Anmelden',
+                  _isSignUp ? t.createAccount : t.logIn,
                   style: const TextStyle(fontSize: 16, color: muted),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
                 TextField(
                   controller: _emailController,
-                  decoration: const InputDecoration(labelText: 'E-Mail'),
+                  decoration: InputDecoration(labelText: t.email),
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
                 ),
                 const SizedBox(height: 14),
                 TextField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(labelText: 'Passwort'),
+                  decoration: InputDecoration(labelText: t.password),
                   obscureText: true,
                 ),
                 if (errorMessage != null) ...[
@@ -92,11 +94,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ],
                 if (authStatus is AuthConfirmationPending) ...[
                   const SizedBox(height: 12),
-                  const Text(
-                    'Fast geschafft: Bitte bestätige deine E-Mail-Adresse über '
-                    'den Link, den wir dir geschickt haben.',
-                    style: TextStyle(fontSize: 13),
-                  ),
+                  Text(t.confirmEmail, style: const TextStyle(fontSize: 13)),
                 ],
                 const SizedBox(height: 22),
                 ElevatedButton(
@@ -107,20 +105,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(_isSignUp ? 'Registrieren' : 'Anmelden'),
+                      : Text(_isSignUp ? t.signUp : t.logIn),
                 ),
                 const SizedBox(height: 16),
-                const Row(
+                Row(
                   children: [
-                    Expanded(child: Divider()),
+                    const Expanded(child: Divider()),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'oder',
-                        style: TextStyle(fontSize: 13, color: muted),
+                        t.or,
+                        style: const TextStyle(fontSize: 13, color: muted),
                       ),
                     ),
-                    Expanded(child: Divider()),
+                    const Expanded(child: Divider()),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -131,7 +129,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             .read(authNotifierProvider.notifier)
                             .signInWithApple(),
                   icon: const Icon(Icons.apple),
-                  label: const Text('Mit Apple anmelden'),
+                  label: Text(t.withApple),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
@@ -141,16 +139,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             .read(authNotifierProvider.notifier)
                             .signInWithGoogle(),
                   icon: const Icon(Icons.g_mobiledata),
-                  label: const Text('Mit Google anmelden'),
+                  label: Text(t.withGoogle),
                 ),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () => setState(() => _isSignUp = !_isSignUp),
-                  child: Text(
-                    _isSignUp
-                        ? 'Bereits ein Konto? Anmelden'
-                        : 'Noch kein Konto? Registrieren',
-                  ),
+                  child: Text(_isSignUp ? t.haveAccount : t.noAccount),
                 ),
               ],
             ),

@@ -1,10 +1,13 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
+import 'locale.dart';
+import 'messages.dart';
 
 // Pleasance family colour band, see DESIGN.md in the starter: glow for
 // gradient surfaces and dark backgrounds, deep for text on light ones.
@@ -81,13 +84,12 @@ class FahrbarTile extends StatelessWidget {
 }
 
 /// Sender line at the bottom of a screen: made by Pleasance and where this
-/// app sits on the family band. The language button follows once there is
-/// more than one language.
-class PleasanceFooter extends StatelessWidget {
+/// app sits on the family band, and the language button.
+class PleasanceFooter extends ConsumerWidget {
   const PleasanceFooter({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final small = Theme.of(context).textTheme.bodySmall?.copyWith(color: muted);
     return SafeArea(
       top: false,
@@ -104,7 +106,7 @@ class PleasanceFooter extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('ein Werkzeug von', style: small),
+                  Text(context.t.madeBy, style: small),
                   const SizedBox(width: 8),
                   SvgPicture.asset(
                     'assets/pleasance-wordmark.svg',
@@ -122,6 +124,18 @@ class PleasanceFooter extends StatelessWidget {
                 heightFactor: 1,
                 child: _BandLine(),
               ),
+            ),
+            const SizedBox(width: 12),
+            TextButton(
+              onPressed: () => ref.read(localeProvider.notifier).toggle(),
+              style: TextButton.styleFrom(
+                foregroundColor: muted,
+                textStyle: small,
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(context.t.otherLanguage),
             ),
           ],
         ),

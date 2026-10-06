@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/brand.dart';
+import '../../../core/messages.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../domain/review_provider.dart';
 
@@ -55,7 +56,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bewertung abgegeben!')),
+          SnackBar(content: Text(context.t.reviewSubmitted)),
         );
         context.pop();
       }
@@ -69,7 +70,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Bewertung')),
+      appBar: AppBar(title: Text(context.t.review)),
       body: Padding(
         // Content stays 640 wide on large screens
         padding: EdgeInsets.symmetric(
@@ -79,7 +80,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Wie war deine Erfahrung?', style: display(30, color: ink)),
+            Text(context.t.howWasIt, style: display(30, color: ink)),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -99,8 +100,8 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
             TextField(
               controller: _commentCtrl,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Kommentar (optional)',
+              decoration: InputDecoration(
+                labelText: context.t.commentOptional,
                 alignLabelWithHint: true,
               ),
             ),
@@ -118,7 +119,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Bewertung abgeben'),
+                  : Text(context.t.submitReview),
             ),
           ],
         ),

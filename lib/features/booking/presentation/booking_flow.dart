@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/brand.dart';
+import '../../../core/messages.dart';
 import '../../cars/domain/car.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../domain/booking_provider.dart';
@@ -36,13 +37,13 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
         min(restHours * widget.car.pricePerHour, widget.car.pricePerDay);
   }
 
-  String get _durationLabel {
+  String _durationLabel(Messages t) {
     if (_hours <= 0) return '—';
     final days = _hours ~/ 24;
     final restHours = _hours - days * 24;
     return [
-      if (days > 0) days == 1 ? '1 Tag' : '$days Tage',
-      if (restHours > 0) '${restHours.toStringAsFixed(1)} Std.',
+      if (days > 0) t.days(days),
+      if (restHours > 0) t.hours(restHours),
     ].join(' ');
   }
 
@@ -81,17 +82,17 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
 
   Future<void> _submit() async {
     if (_startTime == null || _endTime == null) {
-      setState(() => _error = 'Bitte Start- und Endzeit auswählen.');
+      setState(() => _error = context.t.pickTimes);
       return;
     }
     if (_endTime!.isBefore(_startTime!)) {
-      setState(() => _error = 'Endzeit muss nach Startzeit liegen.');
+      setState(() => _error = context.t.endBeforeStart);
       return;
     }
 
     final authStatus = ref.read(authNotifierProvider);
     if (authStatus is! AuthAuthenticated) {
-      setState(() => _error = 'Bitte zuerst anmelden.');
+      setState(() => _error = context.t.logInFirst);
       return;
     }
 
@@ -110,7 +111,7 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Anfrage gesendet. Der Vermieter muss noch bestätigen.')),
+          SnackBar(content: Text(context.t.requestSent)),
         );
       }
     } catch (e) {
@@ -123,6 +124,7 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = context.t;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
@@ -152,13 +154,13 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
             ),
             const SizedBox(height: 24),
             _DateTimeRow(
-              label: 'Abholung',
+              label: t.pickup,
               value: _startTime,
               onTap: () => _pickDateTime(isStart: true),
             ),
             const SizedBox(height: 12),
             _DateTimeRow(
-              label: 'Rückgabe',
+              label: t.returnTime,
               value: _endTime,
               onTap: () => _pickDateTime(isStart: false),
             ),
@@ -167,7 +169,7 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
               const Divider(),
               const SizedBox(height: 14),
               _PriceSummary(
-                duration: _durationLabel,
+                duration: _durationLabel(t),
                 total: _totalPrice,
                 platformFee: _totalPrice * 0.15,
                 currency: widget.car.currency,
@@ -190,12 +192,12 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : Text(_totalPrice > 0
-                      ? 'Anfrage senden · ${_totalPrice.toStringAsFixed(2)} ${widget.car.currency}'
-                      : 'Zeitraum auswählen'),
+                      ? t.sendRequest(t.money(_totalPrice, widget.car.currency))
+                      : t.chooseTime),
             ),
             const SizedBox(height: 8),
             Text(
-              'Der Vermieter bestätigt deine Anfrage',
+              t.ownerConfirms,
               style: theme.textTheme.bodySmall?.copyWith(color: muted),
               textAlign: TextAlign.center,
             ),
@@ -218,11 +220,8 @@ class _DateTimeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formatted = value == null
-        ? 'Auswählen'
-        : '${value!.day.toString().padLeft(2, '0')}.${value!.month.toString().padLeft(2, '0')}.${value!.year}  '
-            '${value!.hour.toString().padLeft(2, '0')}:'
-            '${value!.minute.toString().padLeft(2, '0')} Uhr';
+    final formatted =
+        value == null ? context.t.choose : context.t.dateTime(value!);
 
     return InkWell(
       onTap: onTap,
@@ -272,15 +271,16 @@ class _PriceSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.t;
     return Column(
       children: [
-        _Row('Dauer', duration),
+        _Row(t.duration, duration),
         const SizedBox(height: 4),
-        _Row('Gesamtpreis', '${total.toStringAsFixed(2)} $currency', bold: true),
+        _Row(t.total, t.money(total, currency), bold: true),
         const SizedBox(height: 6),
         _Row(
-          'davon Plattformgebühr (15%)',
-          '${platformFee.toStringAsFixed(2)} $currency',
+          t.platformFee,
+          t.money(platformFee, currency),
           small: true,
         ),
       ],

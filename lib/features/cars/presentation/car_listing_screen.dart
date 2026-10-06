@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/brand.dart';
+import '../../../core/messages.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../domain/cars_provider.dart';
 
@@ -68,12 +69,9 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(switch (e) {
-            LocationServiceDisabledException() =>
-              'Die Ortungsdienste sind ausgeschaltet.',
-            PermissionDeniedException() =>
-              'fahrbar hat keinen Zugriff auf deinen Standort. '
-                  'Du kannst ihn in den Einstellungen erlauben.',
-            _ => 'Dein Standort ist gerade nicht verfügbar.',
+            LocationServiceDisabledException() => context.t.locationOff,
+            PermissionDeniedException() => context.t.locationDeniedSettings,
+            _ => context.t.locationUnavailable,
           }),
         ));
       }
@@ -86,7 +84,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
     if (!_formKey.currentState!.validate()) return;
     // Without a position the car never shows up on the map
     if (_location == null) {
-      setState(() => _error = 'Bitte lege den Standort per GPS fest.');
+      setState(() => _error = context.t.setLocation);
       return;
     }
 
@@ -118,7 +116,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
       if (mounted) {
         ref.invalidate(nearbyCarsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Auto erfolgreich eingestellt!')),
+          SnackBar(content: Text(context.t.carListed)),
         );
         context.pop();
       }
@@ -131,8 +129,9 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.t;
     return Scaffold(
-      appBar: AppBar(title: const Text('Auto einstellen')),
+      appBar: AppBar(title: Text(t.listCar)),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -142,12 +141,12 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
             vertical: 20,
           ),
           children: [
-            _SectionLabel('Fahrzeug'),
+            _SectionLabel(t.vehicle),
             Row(
               children: [
-                Expanded(child: _field(_makeCtrl, 'Marke', required: true)),
+                Expanded(child: _field(_makeCtrl, t.make, required: true)),
                 const SizedBox(width: 12),
-                Expanded(child: _field(_modelCtrl, 'Modell', required: true)),
+                Expanded(child: _field(_modelCtrl, t.model, required: true)),
               ],
             ),
             const SizedBox(height: 12),
@@ -155,39 +154,37 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
               children: [
                 Expanded(
                   child: _field(
-                    _yearCtrl, 'Baujahr',
+                    _yearCtrl, t.year,
                     required: true,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     validator: (v) {
                       final y = int.tryParse(v ?? '');
-                      if (y == null || y < 1990 || y > 2030) return 'Ungültig';
+                      if (y == null || y < 1990 || y > 2030) return t.invalid;
                       return null;
                     },
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(child: _field(_plateCtrl, 'Kennzeichen', required: true)),
+                Expanded(child: _field(_plateCtrl, t.plate, required: true)),
               ],
             ),
             const SizedBox(height: 12),
-            _field(_colorCtrl, 'Farbe (optional)'),
+            _field(_colorCtrl, t.colourOptional),
             const SizedBox(height: 20),
-            _SectionLabel('Ausstattung'),
+            _SectionLabel(t.features),
             Row(
               children: [
                 Expanded(
                   child: InputDecorator(
-                    decoration: _inputDecoration('Kraftstoff'),
+                    decoration: _inputDecoration(t.fuelLabel),
                     child: DropdownButton<String>(
                       value: _fuelType,
                       isExpanded: true,
                       underline: const SizedBox(),
-                      items: const [
-                        DropdownMenuItem(value: 'gasoline', child: Text('Benzin')),
-                        DropdownMenuItem(value: 'diesel', child: Text('Diesel')),
-                        DropdownMenuItem(value: 'electric', child: Text('Elektro')),
-                        DropdownMenuItem(value: 'hybrid', child: Text('Hybrid')),
+                      items: [
+                        for (final f in ['gasoline', 'diesel', 'electric', 'hybrid'])
+                          DropdownMenuItem(value: f, child: Text(t.fuel(f))),
                       ],
                       onChanged: (v) => setState(() => _fuelType = v!),
                     ),
@@ -196,14 +193,14 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: InputDecorator(
-                    decoration: _inputDecoration('Getriebe'),
+                    decoration: _inputDecoration(t.gearbox),
                     child: DropdownButton<String>(
                       value: _transmission,
                       isExpanded: true,
                       underline: const SizedBox(),
-                      items: const [
-                        DropdownMenuItem(value: 'manual', child: Text('Schaltung')),
-                        DropdownMenuItem(value: 'automatic', child: Text('Automatik')),
+                      items: [
+                        for (final g in ['manual', 'automatic'])
+                          DropdownMenuItem(value: g, child: Text(t.transmission(g))),
                       ],
                       onChanged: (v) => setState(() => _transmission = v!),
                     ),
@@ -213,49 +210,49 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
             ),
             const SizedBox(height: 12),
             InputDecorator(
-              decoration: _inputDecoration('Sitzplätze'),
+              decoration: _inputDecoration(t.seatsLabel),
               child: DropdownButton<int>(
                 value: _seats,
                 isExpanded: true,
                 underline: const SizedBox(),
                 items: [2, 3, 4, 5, 7, 8, 9]
-                    .map((s) => DropdownMenuItem(value: s, child: Text('$s Sitze')))
+                    .map((s) => DropdownMenuItem(value: s, child: Text(t.seats(s))))
                     .toList(),
                 onChanged: (v) => setState(() => _seats = v!),
               ),
             ),
             const SizedBox(height: 20),
-            _SectionLabel('Preise'),
+            _SectionLabel(t.prices),
             Row(
               children: [
                 Expanded(
                   child: _field(
-                    _priceHourCtrl, 'Preis/Stunde (€)',
+                    _priceHourCtrl, t.pricePerHourField,
                     required: true,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     validator: (v) =>
                         double.tryParse((v ?? '').replaceAll(',', '.')) == null
-                            ? 'Ungültiger Preis'
+                            ? t.invalidPrice
                             : null,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _field(
-                    _priceDayCtrl, 'Preis/Tag (€)',
+                    _priceDayCtrl, t.pricePerDayField,
                     required: true,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     validator: (v) =>
                         double.tryParse((v ?? '').replaceAll(',', '.')) == null
-                            ? 'Ungültiger Preis'
+                            ? t.invalidPrice
                             : null,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 20),
-            _SectionLabel('Standort'),
-            _field(_addressCtrl, 'Adresse (optional)'),
+            _SectionLabel(t.location),
+            _field(_addressCtrl, t.addressOptional),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _loadingLocation ? null : _getLocation,
@@ -266,9 +263,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.my_location, size: 18),
-              label: Text(_location != null
-                  ? 'Position gesetzt ✓'
-                  : 'GPS-Position ermitteln'),
+              label: Text(_location != null ? t.positionSet : t.getGps),
             ),
             const SizedBox(height: 32),
             if (_error != null)
@@ -284,7 +279,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Auto einstellen'),
+                  : Text(t.listCar),
             ),
             const SizedBox(height: 32),
           ],
@@ -308,7 +303,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
       decoration: _inputDecoration(label),
       validator: validator ??
           (required
-              ? (v) => (v == null || v.trim().isEmpty) ? 'Pflichtfeld' : null
+              ? (v) => (v == null || v.trim().isEmpty) ? context.t.required : null
               : null),
     );
   }
