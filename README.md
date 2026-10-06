@@ -116,7 +116,8 @@ lib/
     profile/     presentation
     home/        presentation
   core/
-    theme · router
+    theme · router · brand (Pleasance band, tile, footer)
+  config.dart    section of the family colour band
   providers/
     supabase_provider · auth_provider
 

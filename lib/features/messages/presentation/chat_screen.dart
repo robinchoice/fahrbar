@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/brand.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../domain/message.dart';
 import '../domain/message_provider.dart';
@@ -84,7 +87,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 }
                 return ListView.builder(
                   controller: _scrollCtrl,
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: _sidePadding(context, 16),
+                    vertical: 16,
+                  ),
                   itemCount: messages.length,
                   itemBuilder: (context, i) =>
                       _Bubble(message: messages[i], isMe: messages[i].senderId == userId),
@@ -106,13 +112,9 @@ class _Bubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final bg = isMe
-        ? theme.colorScheme.primary
-        : theme.colorScheme.surfaceContainerHighest;
-    final fg = isMe
-        ? theme.colorScheme.onPrimary
-        : theme.colorScheme.onSurface;
+    // Own messages in ink, the gradient stays reserved for the send button
+    final bg = isMe ? ink : Colors.white;
+    final fg = isMe ? paper : ink;
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -120,10 +122,11 @@ class _Bubble extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.72,
+          maxWidth: min(MediaQuery.of(context).size.width, 640) * 0.72,
         ),
         decoration: BoxDecoration(
           color: bg,
+          border: isMe ? null : Border.all(color: hairline),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -151,7 +154,8 @@ class _InputBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        padding: EdgeInsets.fromLTRB(
+            _sidePadding(context, 12), 8, _sidePadding(context, 12), 12),
         child: Row(
           children: [
             Expanded(
@@ -162,6 +166,15 @@ class _InputBar extends StatelessWidget {
                   hintText: 'Nachricht...',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(color: hairline),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(color: hairline),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(color: ink, width: 2),
                   ),
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -170,15 +183,33 @@ class _InputBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: sending ? null : onSend,
-              icon: sending
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send),
+            Tooltip(
+              message: 'Senden',
+              child: Opacity(
+                opacity: sending ? 0.5 : 1,
+                child: Material(
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: Ink(
+                    decoration: BoxDecoration(gradient: bandGradient(glow)),
+                    child: InkWell(
+                      onTap: sending ? null : onSend,
+                      child: SizedBox.square(
+                        dimension: 46,
+                        child: Center(
+                          child: sending
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.send, size: 20, color: ink),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -186,3 +217,7 @@ class _InputBar extends StatelessWidget {
     );
   }
 }
+
+// Content stays 640 wide on large screens
+double _sidePadding(BuildContext context, double minimum) =>
+    max(minimum, (MediaQuery.sizeOf(context).width - 640) / 2);

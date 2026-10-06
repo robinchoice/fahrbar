@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/brand.dart';
 import '../../cars/domain/car.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../domain/booking_provider.dart';
@@ -140,14 +141,14 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.outlineVariant,
+                  color: hairline,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             Text(
               widget.car.displayName,
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: display(26, color: ink),
             ),
             const SizedBox(height: 24),
             _DateTimeRow(
@@ -161,27 +162,24 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
               value: _endTime,
               onTap: () => _pickDateTime(isStart: false),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             if (_totalPrice > 0) ...[
               const Divider(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               _PriceSummary(
                 duration: _durationLabel,
                 total: _totalPrice,
                 platformFee: _totalPrice * 0.15,
                 currency: widget.car.currency,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               const Divider(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
             ],
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: theme.colorScheme.error),
-                ),
+                child: ErrorLine(_error!),
               ),
             ElevatedButton(
               onPressed: (_loading || _totalPrice == 0) ? null : _submit,
@@ -198,7 +196,7 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
             const SizedBox(height: 8),
             Text(
               'Der Vermieter bestätigt deine Anfrage',
-              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
               textAlign: TextAlign.center,
             ),
           ],
@@ -232,17 +230,18 @@ class _DateTimeRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          color: Colors.white,
+          border: Border.all(color: value == null ? hairline : ink),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today, size: 18),
+            const Icon(Icons.calendar_today, size: 20, color: muted),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: Theme.of(context).textTheme.labelSmall),
+                Text(label, style: const TextStyle(fontSize: 12, color: muted)),
                 Text(
                   formatted,
                   style: Theme.of(context)
@@ -278,7 +277,7 @@ class _PriceSummary extends StatelessWidget {
         _Row('Dauer', duration),
         const SizedBox(height: 4),
         _Row('Gesamtpreis', '${total.toStringAsFixed(2)} $currency', bold: true),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         _Row(
           'davon Plattformgebühr (15%)',
           '${platformFee.toStringAsFixed(2)} $currency',
@@ -299,16 +298,19 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = small
-        ? Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)
+        ? Theme.of(context).textTheme.bodySmall?.copyWith(color: muted)
         : Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+              fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
             );
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
       children: [
         Text(label, style: style),
-        Text(value, style: style),
+        // The total is the large number of this sheet
+        Text(value, style: bold ? display(30, color: ink) : style),
       ],
     );
   }

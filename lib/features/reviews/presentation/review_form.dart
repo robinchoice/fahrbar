@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/brand.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../domain/review_provider.dart';
 
@@ -65,16 +68,18 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Bewertung')),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        // Content stays 640 wide on large screens
+        padding: EdgeInsets.symmetric(
+          horizontal: max(24, (MediaQuery.sizeOf(context).width - 640) / 2),
+          vertical: 24,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Wie war deine Erfahrung?', style: theme.textTheme.titleLarge),
+            Text('Wie war deine Erfahrung?', style: display(30, color: ink)),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -84,7 +89,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
                   iconSize: 40,
                   icon: Icon(
                     star <= _rating ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
+                    color: star <= _rating ? ink : muted,
                   ),
                   onPressed: () => setState(() => _rating = star),
                 );
@@ -96,7 +101,6 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
               maxLines: 4,
               decoration: const InputDecoration(
                 labelText: 'Kommentar (optional)',
-                border: OutlineInputBorder(),
                 alignLabelWithHint: true,
               ),
             ),
@@ -104,10 +108,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: theme.colorScheme.error),
-                ),
+                child: ErrorLine(_error!),
               ),
             ElevatedButton(
               onPressed: _submitting ? null : _submit,

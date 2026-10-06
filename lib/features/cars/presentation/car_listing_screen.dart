@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/brand.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../domain/cars_provider.dart';
 
@@ -128,14 +131,16 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Auto einstellen')),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          // Content stays 640 wide on large screens
+          padding: EdgeInsets.symmetric(
+            horizontal: max(20, (MediaQuery.sizeOf(context).width - 640) / 2),
+            vertical: 20,
+          ),
           children: [
             _SectionLabel('Fahrzeug'),
             Row(
@@ -269,10 +274,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: theme.colorScheme.error),
-                ),
+                child: ErrorLine(_error!),
               ),
             ElevatedButton(
               onPressed: _submitting ? null : _submit,
@@ -313,9 +315,6 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
 
   InputDecoration _inputDecoration(String label) => InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       );
 }
 
@@ -329,10 +328,7 @@ class _SectionLabel extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         text,
-        style: Theme.of(context)
-            .textTheme
-            .labelMedium
-            ?.copyWith(color: Colors.grey),
+        style: const TextStyle(fontSize: 13, color: muted),
       ),
     );
   }

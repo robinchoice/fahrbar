@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/brand.dart';
 import '../domain/car.dart';
 import '../../booking/presentation/booking_flow.dart';
 import '../../reviews/domain/review_provider.dart';
@@ -20,7 +21,7 @@ class CarDetailSheet extends StatelessWidget {
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Stack(
             children: [
@@ -38,7 +39,7 @@ class CarDetailSheet extends StatelessWidget {
                             width: 40,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
+                              color: hairline,
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -51,10 +52,7 @@ class CarDetailSheet extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   car.displayName,
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: display(30, color: ink),
                                 ),
                               ),
                               IconButton(
@@ -71,14 +69,13 @@ class CarDetailSheet extends StatelessWidget {
                                 const EdgeInsets.fromLTRB(20, 4, 20, 0),
                             child: Row(
                               children: [
-                                Icon(Icons.location_on_outlined,
-                                    size: 15,
-                                    color: Colors.grey.shade500),
+                                const Icon(Icons.location_on_outlined,
+                                    size: 16, color: muted),
                                 const SizedBox(width: 4),
                                 Text(
                                   car.address!,
-                                  style: TextStyle(
-                                    color: Colors.grey.shade500,
+                                  style: const TextStyle(
+                                    color: muted,
                                     fontSize: 14,
                                   ),
                                 ),
@@ -92,11 +89,15 @@ class CarDetailSheet extends StatelessWidget {
                                 const EdgeInsets.fromLTRB(20, 8, 20, 0),
                             child: Row(
                               children: [
-                                const Icon(Icons.star,
-                                    size: 16, color: Colors.amber),
-                                const SizedBox(width: 4),
+                                const Icon(Icons.star, size: 17, color: ink),
+                                const SizedBox(width: 6),
                                 Text(
-                                  '${car.ratingAvg.toStringAsFixed(1)} (${car.ratingCount} Bewertungen)',
+                                  car.ratingAvg.toStringAsFixed(1),
+                                  style: display(18, color: ink),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '(${car.ratingCount} Bewertungen)',
                                   style: const TextStyle(fontSize: 14),
                                 ),
                               ],
@@ -117,12 +118,12 @@ class CarDetailSheet extends StatelessWidget {
                                 const EdgeInsets.symmetric(horizontal: 20),
                             height: 150,
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color: soft,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Center(
                               child: Icon(Icons.directions_car,
-                                  size: 72, color: Colors.black26),
+                                  size: 72, color: Color(0x995E5E66)),
                             ),
                           ),
                         const SizedBox(height: 24),
@@ -147,7 +148,7 @@ class CarDetailSheet extends StatelessWidget {
                             child: Text(
                               'Ausstattung',
                               style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.bold),
+                                  fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                           ),
                           Padding(
@@ -161,7 +162,7 @@ class CarDetailSheet extends StatelessWidget {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 12, vertical: 6),
                                         decoration: BoxDecoration(
-                                          color: Colors.grey.shade100,
+                                          border: Border.all(color: hairline),
                                           borderRadius:
                                               BorderRadius.circular(20),
                                         ),
@@ -187,23 +188,14 @@ class CarDetailSheet extends StatelessWidget {
                 right: 0,
                 bottom: 0,
                 child: Container(
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                      ),
-                    ],
+                    border: Border(top: BorderSide(color: hairline)),
                   ),
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                   child: ElevatedButton(
                     onPressed: () => _openBookingFlow(context),
-                    child: const Text(
-                      'Jetzt buchen',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    child: const Text('Jetzt buchen'),
                   ),
                 ),
               ),
@@ -276,13 +268,13 @@ class _SpecCell extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: soft,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 22, color: Colors.black87),
+          Icon(icon, size: 22, color: ink),
           const SizedBox(height: 4),
           Text(
             label,
@@ -304,9 +296,9 @@ class _PriceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: hairline),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -316,28 +308,25 @@ class _PriceRow extends StatelessWidget {
               children: [
                 Text(
                   '${car.pricePerHour.toStringAsFixed(2)} ${car.currency}',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                  style: display(28, color: ink),
                 ),
+                const SizedBox(height: 2),
                 const Text('pro Stunde',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    style: TextStyle(fontSize: 12, color: muted)),
               ],
             ),
           ),
-          Container(
-              width: 1,
-              height: 36,
-              color: Colors.grey.shade200),
+          Container(width: 1, height: 44, color: hairline),
           Expanded(
             child: Column(
               children: [
                 Text(
                   '${car.pricePerDay.toStringAsFixed(2)} ${car.currency}',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                  style: display(28, color: ink),
                 ),
+                const SizedBox(height: 2),
                 const Text('pro Tag',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    style: TextStyle(fontSize: 12, color: muted)),
               ],
             ),
           ),
@@ -363,7 +352,7 @@ class _Reviews extends ConsumerWidget {
         children: [
           const Text(
             'Bewertungen',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           for (final review in reviews)
             Padding(
@@ -376,14 +365,13 @@ class _Reviews extends ConsumerWidget {
                       for (var star = 1; star <= 5; star++)
                         Icon(
                           star <= review.rating ? Icons.star : Icons.star_border,
-                          size: 14,
-                          color: Colors.amber,
+                          size: 15,
+                          color: ink,
                         ),
                       const SizedBox(width: 6),
                       Text(
                         _formatDate(review.createdAt.toLocal()),
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade500),
+                        style: const TextStyle(fontSize: 12, color: muted),
                       ),
                     ],
                   ),

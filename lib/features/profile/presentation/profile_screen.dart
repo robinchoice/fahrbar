@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/brand.dart';
 import '../../auth/domain/auth_notifier.dart';
 import '../../booking/domain/booking.dart';
 import '../../booking/domain/booking_provider.dart';
@@ -15,11 +18,13 @@ class ProfileScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
+      bottomNavigationBar: const PleasanceFooter(),
       appBar: AppBar(
         title: const Text('Profil'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
+            tooltip: 'Abmelden',
             onPressed: () async {
               await ref.read(authNotifierProvider.notifier).signOut();
               if (context.mounted) context.go('/login');
@@ -28,27 +33,38 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        // Content stays 640 wide on large screens
+        padding: EdgeInsets.symmetric(
+          horizontal: max(20, (MediaQuery.sizeOf(context).width - 640) / 2),
+          vertical: 8,
+        ),
         children: [
           Center(
             child: Column(
               children: [
-                CircleAvatar(
-                  radius: 40,
+                Container(
+                  width: 84,
+                  height: 84,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: soft,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: hairline),
+                  ),
                   child: Text(
                     user?.email?.substring(0, 1).toUpperCase() ?? '?',
-                    style: const TextStyle(fontSize: 28),
+                    style: display(36, color: ink),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   user?.email ?? '—',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: const TextStyle(fontSize: 16),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           if (user != null) _BookingsSection(userId: user.id),
           const SizedBox(height: 16),
           if (user != null) _OwnerBookingsSection(ownerId: user.id),
@@ -129,13 +145,21 @@ class _BookingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = switch (booking.status) {
-      BookingStatus.confirmed => Colors.green,
-      BookingStatus.active => Colors.blue,
-      BookingStatus.completed => Colors.grey,
-      BookingStatus.cancelled || BookingStatus.rejected => Colors.red,
-      BookingStatus.dispute => Colors.orange,
-      BookingStatus.pending => Colors.amber,
+    // Neutral dots instead of traffic-light colours, red is the brand here
+    final statusDot = switch (booking.status) {
+      BookingStatus.confirmed => StatusChip.filled(ink),
+      BookingStatus.active => StatusChip.gradient(),
+      BookingStatus.completed => StatusChip.filled(muted),
+      BookingStatus.cancelled || BookingStatus.rejected => StatusChip.dash(),
+      BookingStatus.dispute => StatusChip.filled(accent),
+      BookingStatus.pending => StatusChip.ring(),
+    };
+    final statusDimmed = switch (booking.status) {
+      BookingStatus.completed ||
+      BookingStatus.cancelled ||
+      BookingStatus.rejected =>
+        true,
+      _ => false,
     };
 
     final statusLabel = switch (booking.status) {
@@ -162,8 +186,9 @@ class _BookingTile extends StatelessWidget {
         booking.type == BookingType.carshare
             ? Icons.directions_car
             : Icons.person_pin_circle,
+        color: muted,
       ),
-      title: Text(dateStr),
+      title: Text(dateStr, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text('${booking.totalPrice.toStringAsFixed(2)} ${booking.currency}'),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -175,28 +200,14 @@ class _BookingTile extends StatelessWidget {
           ),
           if (canReview)
             IconButton(
-              icon: const Icon(Icons.star_border, size: 20, color: Colors.amber),
+              icon: const Icon(Icons.star_border, size: 20),
               tooltip: 'Bewerten',
               onPressed: () => context.push(
                 '/bookings/${booking.id}/review?revieweeId=$revieweeId',
               ),
             )
           else
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                statusLabel,
-                style: TextStyle(
-                  color: statusColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+            StatusChip(label: statusLabel, dot: statusDot, dimmed: statusDimmed),
         ],
       ),
     );
@@ -279,22 +290,27 @@ class _OwnerBookingTile extends StatelessWidget {
         '${start.day.toString().padLeft(2, '0')}.${start.month.toString().padLeft(2, '0')}.${start.year}';
 
     return ListTile(
-      leading: const Icon(Icons.directions_car),
-      title: Text(dateStr),
+      leading: const Icon(Icons.directions_car, color: muted),
+      title: Text(dateStr, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text('${booking.totalPrice.toStringAsFixed(2)} ${booking.currency}'),
       trailing: booking.status == BookingStatus.pending
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.check_circle, color: Colors.green),
-                  tooltip: 'Bestätigen',
-                  onPressed: () => _updateStatus(context, BookingStatus.confirmed),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.cancel, color: Colors.red),
+                  icon: const Icon(Icons.close, color: muted),
                   tooltip: 'Ablehnen',
                   onPressed: () => _updateStatus(context, BookingStatus.rejected),
+                ),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  icon: const Icon(Icons.check_circle, size: 20),
+                  label: const Text('Bestätigen'),
+                  onPressed: () => _updateStatus(context, BookingStatus.confirmed),
                 ),
               ],
             )
@@ -304,14 +320,7 @@ class _OwnerBookingTile extends StatelessWidget {
                   onPressed: () => _updateStatus(context, BookingStatus.completed),
                   child: const Text('Rückgabe bestätigen'),
                 )
-              : const Text(
-                  'Bestätigt',
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              : StatusChip(label: 'Bestätigt', dot: StatusChip.filled(ink)),
     );
   }
 }
@@ -327,13 +336,10 @@ class _Section extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 4),
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
             title,
-            style: Theme.of(context)
-                .textTheme
-                .labelMedium
-                ?.copyWith(color: Colors.grey),
+            style: const TextStyle(fontSize: 13, color: muted),
           ),
         ),
         Card(
