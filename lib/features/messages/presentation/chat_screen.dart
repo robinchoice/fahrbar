@@ -45,7 +45,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             senderId: userId,
             body: text,
           );
-      if (mounted && _ctrl.text.trim() == text) _ctrl.clear();
+      if (mounted) _ctrl.clear();
       // Scroll to bottom after send
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollCtrl.hasClients) {
@@ -169,6 +169,7 @@ class _InputBar extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: ctrl,
+                readOnly: sending,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
                   hintText: context.t.messageHint,

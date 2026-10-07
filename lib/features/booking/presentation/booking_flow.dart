@@ -91,6 +91,10 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
       setState(() => _error = context.t.pickTimes);
       return;
     }
+    if (_startTime!.isBefore(DateTime.now())) {
+      setState(() => _error = context.t.startInPast);
+      return;
+    }
     if (_endTime!.isBefore(_startTime!)) {
       setState(() => _error = context.t.endBeforeStart);
       return;

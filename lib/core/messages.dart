@@ -82,6 +82,7 @@ abstract class Messages {
   String days(int count);
   String hours(double count);
   String get pickTimes;
+  String get startInPast;
   String get endBeforeStart;
   String get logInFirst;
   String get requestSent;
@@ -266,6 +267,8 @@ class De extends Messages {
   String hours(double count) => '${count.toStringAsFixed(1).replaceAll('.', ',')} Std.';
   @override
   String get pickTimes => 'Bitte Start- und Endzeit auswählen.';
+  @override
+  String get startInPast => 'Startzeit muss in der Zukunft liegen.';
   @override
   String get endBeforeStart => 'Endzeit muss nach Startzeit liegen.';
   @override
@@ -517,6 +520,8 @@ class En extends Messages {
   String hours(double count) => '${count.toStringAsFixed(1)} h';
   @override
   String get pickTimes => 'Please choose a start and end time.';
+  @override
+  String get startInPast => 'The start time must be in the future.';
   @override
   String get endBeforeStart => 'The end time must be after the start time.';
   @override

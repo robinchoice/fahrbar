@@ -15,3 +15,8 @@ final userBookingsProvider =
     FutureProvider.autoDispose.family<List<Booking>, String>((ref, userId) {
   return ref.read(bookingRepositoryProvider).getForUser(userId);
 });
+
+final ownerBookingsProvider =
+    FutureProvider.autoDispose.family<List<Booking>, String>((ref, ownerId) {
+  return ref.read(bookingRepositoryProvider).getForOwner(ownerId);
+});

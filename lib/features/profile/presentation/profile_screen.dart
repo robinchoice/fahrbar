@@ -28,7 +28,15 @@ class ProfileScreen extends ConsumerWidget {
             icon: const Icon(Icons.logout),
             tooltip: t.logOut,
             onPressed: () async {
-              await ref.read(authNotifierProvider.notifier).signOut();
+              try {
+                await ref.read(authNotifierProvider.notifier).signOut();
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(context.t.error(e))),
+                  );
+                }
+              }
             },
           ),
         ],
