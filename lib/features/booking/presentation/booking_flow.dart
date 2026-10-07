@@ -49,15 +49,21 @@ class _BookingFlowState extends ConsumerState<BookingFlow> {
 
   Future<void> _pickDateTime({required bool isStart}) async {
     final now = DateTime.now();
-    final initial = isStart
+    final lastDate = now.add(const Duration(days: 90));
+    final proposed = isStart
         ? (_startTime ?? now.add(const Duration(hours: 1)))
         : (_endTime ?? (_startTime ?? now).add(const Duration(hours: 2)));
+    final initial = proposed.isBefore(now)
+        ? now
+        : proposed.isAfter(lastDate)
+            ? lastDate
+            : proposed;
 
     final date = await showDatePicker(
       context: context,
       initialDate: initial,
       firstDate: now,
-      lastDate: now.add(const Duration(days: 90)),
+      lastDate: lastDate,
     );
     if (date == null || !mounted) return;
 

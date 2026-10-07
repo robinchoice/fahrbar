@@ -30,6 +30,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _send() async {
+    if (_sending) return;
     final text = _ctrl.text.trim();
     if (text.isEmpty) return;
 
@@ -37,7 +38,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (userId == null) return;
 
     setState(() => _sending = true);
-    _ctrl.clear();
 
     try {
       await ref.read(messageRepositoryProvider).send(
@@ -45,6 +45,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             senderId: userId,
             body: text,
           );
+      if (mounted && _ctrl.text.trim() == text) _ctrl.clear();
       // Scroll to bottom after send
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollCtrl.hasClients) {
@@ -55,6 +56,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           );
         }
       });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.t.error(e))),
+        );
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
