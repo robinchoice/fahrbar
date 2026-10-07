@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/brand.dart';
 import '../../../core/messages.dart';
@@ -40,12 +39,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authStatus = ref.watch(authNotifierProvider);
-
-    ref.listen(authNotifierProvider, (_, next) {
-      if (next is AuthAuthenticated) {
-        context.go('/');
-      }
-    });
 
     final t = context.t;
     final isLoading = authStatus is AuthLoading;

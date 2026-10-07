@@ -177,7 +177,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
               children: [
                 Expanded(
                   child: InputDecorator(
-                    decoration: _inputDecoration(t.fuelLabel),
+                    decoration: InputDecoration(labelText: t.fuelLabel),
                     child: DropdownButton<String>(
                       value: _fuelType,
                       isExpanded: true,
@@ -193,7 +193,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: InputDecorator(
-                    decoration: _inputDecoration(t.gearbox),
+                    decoration: InputDecoration(labelText: t.gearbox),
                     child: DropdownButton<String>(
                       value: _transmission,
                       isExpanded: true,
@@ -210,7 +210,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
             ),
             const SizedBox(height: 12),
             InputDecorator(
-              decoration: _inputDecoration(t.seatsLabel),
+              decoration: InputDecoration(labelText: t.seatsLabel),
               child: DropdownButton<int>(
                 value: _seats,
                 isExpanded: true,
@@ -300,7 +300,7 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
       controller: ctrl,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      decoration: _inputDecoration(label),
+      decoration: InputDecoration(labelText: label),
       validator: validator ??
           (required
               ? (v) => (v == null || v.trim().isEmpty) ? context.t.required : null
@@ -308,9 +308,6 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String label) => InputDecoration(
-        labelText: label,
-      );
 }
 
 class _SectionLabel extends StatelessWidget {

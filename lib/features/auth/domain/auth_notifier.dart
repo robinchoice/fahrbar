@@ -12,10 +12,6 @@ sealed class AuthStatus {
   const AuthStatus();
 }
 
-class AuthInitial extends AuthStatus {
-  const AuthInitial();
-}
-
 class AuthLoading extends AuthStatus {
   const AuthLoading();
 }

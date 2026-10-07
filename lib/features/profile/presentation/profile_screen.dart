@@ -29,7 +29,6 @@ class ProfileScreen extends ConsumerWidget {
             tooltip: t.logOut,
             onPressed: () async {
               await ref.read(authNotifierProvider.notifier).signOut();
-              if (context.mounted) context.go('/login');
             },
           ),
         ],
@@ -213,7 +212,7 @@ class _OwnerBookingsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bookingsAsync = ref.watch(ownerBookingsProvider(ownerId));
+    final bookingsAsync = ref.watch(userBookingsProvider(ownerId));
     final t = context.t;
 
     return _Section(
@@ -232,8 +231,9 @@ class _OwnerBookingsSection extends ConsumerWidget {
             // Requests to answer and rentals whose return is still open
             final open = bookings
                 .where((b) =>
-                    b.status == BookingStatus.pending ||
-                    b.status == BookingStatus.confirmed)
+                    b.ownerId == ownerId &&
+                    (b.status == BookingStatus.pending ||
+                        b.status == BookingStatus.confirmed))
                 .toList();
             if (open.isEmpty) {
               return ListTile(
@@ -259,7 +259,6 @@ class _OwnerBookingTile extends StatelessWidget {
   Future<void> _updateStatus(BuildContext context, BookingStatus status) async {
     try {
       await ref.read(bookingRepositoryProvider).updateStatus(booking.id, status);
-      ref.invalidate(ownerBookingsProvider(booking.ownerId));
       ref.invalidate(userBookingsProvider(booking.ownerId));
       if (context.mounted) {
         final msg = switch (status) {

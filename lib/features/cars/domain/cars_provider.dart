@@ -11,6 +11,6 @@ final carRepositoryProvider = Provider<CarRepository>((ref) {
 });
 
 final nearbyCarsProvider =
-    FutureProvider.family<List<Car>, LatLng>((ref, center) async {
+    FutureProvider.autoDispose.family<List<Car>, LatLng>((ref, center) async {
   return ref.read(carRepositoryProvider).findNearby(center, 10);
 });

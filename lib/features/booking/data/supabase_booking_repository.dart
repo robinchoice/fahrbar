@@ -24,34 +24,11 @@ class SupabaseBookingRepository implements BookingRepository {
   }
 
   @override
-  Future<Booking> getById(String id) async {
-    final response = await _client
-        .from('bookings')
-        .select()
-        .eq('id', id)
-        .single();
-    return Booking.fromJson(response);
-  }
-
-  @override
   Future<List<Booking>> getForUser(String userId) async {
     final response = await _client
         .from('bookings')
         .select()
         .or('renter_id.eq.$userId,owner_id.eq.$userId')
-        .order('created_at', ascending: false);
-
-    return (response as List)
-        .map((e) => Booking.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  @override
-  Future<List<Booking>> getForOwner(String ownerId) async {
-    final response = await _client
-        .from('bookings')
-        .select()
-        .eq('owner_id', ownerId)
         .order('created_at', ascending: false);
 
     return (response as List)

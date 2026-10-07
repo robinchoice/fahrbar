@@ -10,6 +10,6 @@ final messageRepositoryProvider = Provider<MessageRepository>((ref) {
 });
 
 final chatStreamProvider =
-    StreamProvider.family<List<Message>, String>((ref, bookingId) {
+    StreamProvider.autoDispose.family<List<Message>, String>((ref, bookingId) {
   return ref.read(messageRepositoryProvider).watch(bookingId);
 });
