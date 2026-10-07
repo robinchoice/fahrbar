@@ -307,7 +307,6 @@ class _CarListingScreenState extends ConsumerState<CarListingScreen> {
               : null),
     );
   }
-
 }
 
 class _SectionLabel extends StatelessWidget {
