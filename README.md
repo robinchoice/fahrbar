@@ -24,7 +24,7 @@ Why fahrbar changed course: [ADR 002](docs/decisions/002-fahrer-service-pilot.md
 | Service | Status |
 |---|---|
 | **Driver service** — a vetted driver takes you home in your own car | Pilot in preparation (Freiburg) |
-| **Carsharing** — rent out your car or rent someone else's | Planned after the pilot, with group insurance. Prototype code stays in the repo |
+| **Carsharing** — rent out your car or rent someone else's | Planned after the pilot, with group insurance. The earlier prototype is kept under the tag `carsharing-prototype` |
 
 ---
 
@@ -32,110 +32,40 @@ Why fahrbar changed course: [ADR 002](docs/decisions/002-fahrer-service-pilot.md
 
 | Layer | Technology |
 |---|---|
-| App | Flutter 3.41.6+ (web booking in the pilot, iOS/Android app for drivers later) |
-| State | Riverpod 2.x |
-| Backend | Supabase (PostgreSQL + PostGIS + Realtime + Auth), self-hostable |
-| Maps | flutter_map + OpenStreetMap |
+| Web | SvelteKit (`apps/web`): booking page for patients, team area |
+| API | Hono on Bun (`apps/api`), Drizzle and Postgres (`packages/db`), a worker that deletes rides a week after their morning |
+| Driver app | Flutter (`apps/mobile`), only the scaffold during the pilot |
+| Encryption | Web Crypto in the browser: P-256, HKDF and AES-GCM (`packages/shared/src/crypto.ts`) |
 | Payments | Cash during the pilot, counted out in advance, receipt without a name. No in-app payment |
+
+Everything is open source and self-hosted in Germany, without Supabase, Google or other hosted services. The stack follows the [starter](https://github.com/robinchoice/starter) of Pleasance. The carsharing prototype on Flutter and Supabase is kept under the tag [`carsharing-prototype`](https://github.com/robinchoice/fahrbar/tree/carsharing-prototype), see [ADR 004](docs/decisions/004-neubau-auf-starter.md).
+
+---
+
+## How it works
+
+1. A partner practice hands out its booking link, `/p/<practice>`.
+2. The patient picks one of the practice's fahrbar mornings and the time of the appointment, then enters first name, destination, car and phone. No account, no surname, no procedure or diagnosis.
+3. The browser encrypts these details to the team's public key. The server stores only the ciphertext plus morning and status, and deletes the ride a week after its morning.
+4. The team logs in by magic link, unlocks the team key with its passphrase in the browser and sees the pickups of each morning. The patient's link shows the status and lets them cancel.
 
 ---
 
 ## Getting started
 
-### Prerequisites
+Requires Bun, Docker, and Flutter for the app.
 
-- Flutter 3.41.6+
-- Supabase CLI
-- Docker / OrbStack (for local Supabase)
-
-### Run locally
-
-```bash
-# 1. Clone
-git clone https://github.com/robinchoice/fahrbar
-cd fahrbar
-
-# 2. Start local Supabase (applies migrations + seed data automatically)
-supabase start
-supabase db reset
-
-# 3. Run the app
-flutter run \
-  --dart-define=SUPABASE_URL=http://127.0.0.1:54321 \
-  --dart-define=SUPABASE_ANON_KEY=<anon-key-from-supabase-start>
+```sh
+cp .env.example .env    # put your address into TEAM_EMAILS
+docker compose up -d
+bun install
+bunx playwright install chromium   # once, for the browser tests
+bun run dev
 ```
 
-The local anon key is printed by `supabase start` or via `supabase status -o env`. For testing on a physical device, replace `127.0.0.1` with your machine's LAN IP.
+Web runs on http://localhost:5173, the API on port 3000. Without `SMTP_HOST` the login links appear in the API log. Log in at `/login`, set the team passphrase at `/team`, add a practice and a morning, then book through the practice link.
 
-The map loads the public OpenStreetMap tiles, which are only meant for light use such as development. Release builds need a tile provider that allows app use: `--dart-define=MAP_TILE_URL=https://…/{z}/{x}/{y}.png`.
-
-### Web build
-
-Build the web app with `--no-web-resources-cdn`. Without it Flutter loads CanvasKit and the Roboto font from Google's servers on every page view; with it everything comes from our own host:
-
-```bash
-flutter build web --no-web-resources-cdn \
-  --dart-define=SUPABASE_URL=… \
-  --dart-define=SUPABASE_ANON_KEY=…
-```
-
-### Apple and Google sign-in
-
-Both providers are enabled in `supabase/config.toml` and read their credentials from `supabase/.env` (gitignored):
-
-```bash
-SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID=...
-SUPABASE_AUTH_EXTERNAL_APPLE_SECRET=...
-SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=...
-SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=...
-```
-
-The iOS and Android apps come back through the deep link `de.fahrbar://login-callback`, the web build through `site_url`. Locally that is `http://127.0.0.1:3000`, so start the web app with `flutter run -d chrome --web-hostname 127.0.0.1 --web-port 3000`.
-
-### Seed data
-
-`supabase db reset` automatically runs `supabase/seed.sql`, which creates a test owner account and 5 cars around Freiburg:
-
-| Email | Password |
-|---|---|
-| `anbieter@fahrbar.dev` | `fahrbar123` |
-
----
-
-## What's in the code today
-
-- Email sign-in, plus Apple and Google sign-in once their credentials are set (see above).
-- Carsharing prototype: map with nearby cars (PostGIS), car detail, listing form, booking requests without payment that the owner confirms or rejects.
-- In-booking chat with live updates via Supabase Realtime.
-- Reviews: once the owner confirms the return, the renter can rate the rental. Reviews and ratings show up on the car.
-- German and English, switchable in the footer. The choice is remembered, otherwise the app follows the device language. All texts live in `lib/core/messages.dart`.
-
----
-
-## Architecture
-
-Feature-first, with a domain / data / presentation split per feature. Feature code talks to abstract repository interfaces; the Supabase implementations live in `data/`.
-
-```
-lib/
-  features/
-    auth/        domain · data · presentation
-    cars/        domain · data · presentation
-    booking/     domain · data · presentation
-    messages/    domain · data · presentation
-    reviews/     domain · data · presentation
-    profile/     presentation
-    home/        presentation
-  core/
-    theme · router · brand (Pleasance band, tile, footer) · messages · locale
-  config.dart    section of the family colour band
-  providers/
-    supabase_provider · auth_provider
-
-supabase/
-  migrations/   schema + PostGIS RPC
-  seed.sql      test data
-```
+Checks: `bun run check && bun run test && bun run build`, for the app `flutter analyze && flutter test` in `apps/mobile`.
 
 Decisions are recorded in [`docs/decisions/`](docs/decisions/).
 
@@ -149,11 +79,7 @@ Decisions are recorded in [`docs/decisions/`](docs/decisions/).
 2. Free test rides on those mornings, driven by ourselves.
 3. Paid rides once demand is confirmed: legal and insurance setup, fixed price, paid in cash. A minijob driver joins once a morning has had at least three pick-ups four weeks in a row.
 
-**App (in parallel)**
-
-- Web booking form for patients, with ride details end-to-end encrypted so only the team can read them
-
-**Later:** a driver app once there are drivers to assign, carsharing with group insurance, the open network, more cities and data export.
+**Later:** the list of pickups in the driver app once there are drivers to assign, carsharing with group insurance, the open network, more cities and data export.
 
 ---
 
