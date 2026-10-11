@@ -9,7 +9,7 @@
 
 ## Checks
 
-`bun run check && bun run test && bun run build`, for app changes also `flutter analyze && flutter test` in `apps/mobile`.
+`bun run check && bun run test && bun run build`, for app changes also `flutter analyze && flutter test` in `apps/mobile`. The browser tests start API and web on their own ports (53100, 54100). If another worktree tests at the same time, use other ports: `TEST_API_PORT=53101 TEST_WEB_PORT=54101 bun run test`.
 
 ## Deploy
 

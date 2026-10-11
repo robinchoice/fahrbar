@@ -66,6 +66,11 @@ bun run dev
 Web runs on http://localhost:5173, the API on port 3000. Without `SMTP_HOST` the login links appear in the API log. Log in at `/login`, set the team passphrase at `/team`, add a practice and a morning, then book through the practice link.
 
 Checks: `bun run check && bun run test && bun run build`, for the app `flutter analyze && flutter test` in `apps/mobile`.
+The browser tests (Playwright) start API and web themselves on their own ports 53100 and 54100, never against running dev servers. Two worktrees testing at the same time pick other ports via `TEST_API_PORT` and `TEST_WEB_PORT`.
+
+### Login in the Savor preview
+
+Agents show changes behind the login in the Savor preview. `login-link <slug>` from the kontor runs `bun apps/api/src/login-link.ts <email>` in the API container, which prints a one-time login link, valid for 15 minutes like a mailed one. Sessions in use renew to 30 days on each visit, at most once a day, so the preview stays logged in. Only addresses in `TEAM_EMAILS` see rides, and reading them still needs the team passphrase.
 
 Decisions are recorded in [`docs/decisions/`](docs/decisions/).
 
