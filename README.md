@@ -65,12 +65,21 @@ bun run dev
 
 Web runs on http://localhost:5173, the API on port 3000. Without `SMTP_HOST` the login links appear in the API log. Log in at `/login`, set the team passphrase at `/team`, add a practice and a morning, then book through the practice link.
 
-Checks: `bun run check && bun run test && bun run build`, for the app `flutter analyze && flutter test` in `apps/mobile`.
-The browser tests (Playwright) start API and web themselves on their own ports 53100 and 54100, never against running dev servers. Two worktrees testing at the same time pick other ports via `TEST_API_PORT` and `TEST_WEB_PORT`.
+Checks: `bun run check && bun run test`, for the app `flutter analyze && flutter test` in `apps/mobile`.
+The browser tests (Playwright) build the web app and start API and web build themselves on their own ports 53100 and 54100, never against running dev servers, so the CSP applies as in production. Two worktrees testing at the same time pick other ports via `TEST_API_PORT` and `TEST_WEB_PORT`.
 
 ### Login in the Savor preview
 
-Agents show changes behind the login in the Savor preview. `login-link <slug>` from the kontor runs `bun apps/api/src/login-link.ts <email>` in the API container, which prints a one-time login link, valid for 15 minutes like a mailed one. Sessions in use renew to 30 days on each visit, at most once a day, so the preview stays logged in. Only addresses in `TEAM_EMAILS` see rides, and reading them still needs the team passphrase.
+Agents show changes behind the login in the Savor preview. `login-link <slug>` from the kontor runs `bun apps/api/src/login-link.ts <email>` in the API container, which prints a one-time login link, valid for 15 minutes like a mailed one. Sessions in use renew to 30 days on each visit, at most once a day, so the preview stays logged in. Only addresses in `TEAM_EMAILS` see rides, and reading them still needs the team passphrase. The agents' test account admin@pleasance.org has no admin rights in the app (see "Opening sign-up").
+
+### Opening sign-up
+
+fahrbar is reachable from outside but closed until Robin explicitly gives the go to take in external users. Until then magic link and app code only create new accounts for the addresses in `SIGNUP_ALLOWLIST` and `TEAM_EMAILS` (comma-separated). Existing accounts always log in. Strangers get "Sign-up is still closed" from `/auth/magic-link` and `/auth/code`, and no mail goes out. The booking page `/p/<practice>` needs no login and stays open.
+
+- Adding a tester: an admin clicks "Tester einladen" at the top of the app (`/invite`) and enters the address. That creates the account and sends a login link, without Coolify or a redeploy. Admins are the addresses in `ADMIN_EMAILS` (comma-separated, by default robin@pleasance.org, the human admin), the API checks it. Inviting opens nothing, `SIGNUP_OPEN` stays as it is.
+- admin@pleasance.org, the agents' admin, never goes into `ADMIN_EMAILS`: agents log in with it in the preview and must neither create accounts past the closed sign-up nor mail third parties.
+- Opening, only after Robin's go: set `SIGNUP_OPEN=true` in Coolify and redeploy. Check: request a login link for a new address.
+- `login-link` creates accounts itself, the preview's test account needs no entry.
 
 Decisions are recorded in [`docs/decisions/`](docs/decisions/).
 

@@ -30,6 +30,9 @@ services:
       - FEEDBACK_GITHUB_TOKEN=${FEEDBACK_GITHUB_TOKEN:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
       - TEAM_EMAILS=${TEAM_EMAILS:-}
+      - SIGNUP_ALLOWLIST=${SIGNUP_ALLOWLIST:-}
+      - SIGNUP_OPEN=${SIGNUP_OPEN:-}
+      - ADMIN_EMAILS=${ADMIN_EMAILS:-}
     depends_on:
       postgres:
         condition: service_healthy
