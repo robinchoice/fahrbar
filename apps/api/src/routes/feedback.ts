@@ -79,7 +79,7 @@ function mail(report: Report, to: string, issueUrl: string | null, screenshot: B
   const type = screenshot && imageType(screenshot);
   return {
     to,
-    replyTo: `${report.user.name} <${report.user.email}>`,
+    replyTo: { name: report.user.name, address: report.user.email },
     subject: `${report.kind === 'bug' ? 'Bug' : 'Idea'} from ${report.user.name}: ${firstLine(report.message)}`,
     text: [
       report.message,

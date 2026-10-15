@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # API_URL is the own domain from 1.0 on, see README, „Live als 1.0“
+  APP_URL: ${{ vars.API_URL || format('https://{0}.pleasance.org', github.event.repository.name) }}
+
 # Runs of one branch queue up, so an older deploy never overwrites a newer one.
 concurrency:
   group: ci-${{ github.ref }}
@@ -89,8 +93,6 @@ jobs:
       COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
       COOLIFY_UUID: ${{ secrets.COOLIFY_UUID }}
       COOLIFY_API: https://coolify.pleasance.org/api/v1
-      # API_URL is the own domain from 1.0 on, see README, „Live als 1.0“
-      APP_URL: ${{ vars.API_URL || format('https://{0}.pleasance.org', github.event.repository.name) }}
     steps:
       - name: Deploy images to Coolify
         id: deploy
@@ -164,9 +166,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
-    env:
-      # API_URL is the own domain from 1.0 on, see README, „Live als 1.0“
-      APP_URL: ${{ vars.API_URL || format('https://{0}.pleasance.org', github.event.repository.name) }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

@@ -84,7 +84,7 @@ jobs:
 
       # Eindeutige, steigende Build-Nummer pro Lauf, TestFlight lehnt Duplikate ab.
       - name: Flutter-Build vorbereiten
-        run: flutter build ios --release --no-codesign --dart-define=API_URL=$API_URL --dart-define=SENTRY_DSN=$SENTRY_DSN --build-number=$GITHUB_RUN_NUMBER --dart-define=APP_VERSION=$GITHUB_SHA
+        run: flutter build ios --config-only --release --no-codesign --dart-define=API_URL=$API_URL --dart-define=SENTRY_DSN=$SENTRY_DSN --build-number=$GITHUB_RUN_NUMBER --dart-define=APP_VERSION=$GITHUB_SHA
 
       - name: Archive bauen
         working-directory: apps/mobile/ios

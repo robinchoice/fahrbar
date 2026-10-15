@@ -79,7 +79,7 @@ fahrbar is reachable from outside but closed until Robin explicitly gives the go
 - Adding a tester: an admin clicks "Tester einladen" at the top of the app (`/invite`) and enters the address. That creates the account and sends a login link, without Coolify or a redeploy. Admins are the addresses in `ADMIN_EMAILS` (comma-separated, by default robin@pleasance.org, the human admin), the API checks it. Inviting opens nothing, `SIGNUP_OPEN` stays as it is.
 - admin@pleasance.org, the agents' admin, never goes into `ADMIN_EMAILS`: agents log in with it in the preview and must neither create accounts past the closed sign-up nor mail third parties.
 - Opening, only after Robin's go: set `SIGNUP_OPEN=true` in Coolify and redeploy. Check: request a login link for a new address.
-- `login-link` creates accounts itself, the preview's test account needs no entry.
+- `login-link` creates accounts itself, the preview's test account needs no entry. The script takes any address, the limit sits on the server: agents don't get into the container, only through the root-owned `login-link` from the kontor, which always passes admin@pleasance.org. Whoever gets into the container has the database anyway.
 
 ### Secret scan
 
