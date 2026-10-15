@@ -32,6 +32,7 @@
 - No Bitcoin/Lightning: the pilot is paid in cash by decision (ADR 003), there is no payment integration.
 - `apps/mobile` is only the starter scaffold until the pilot has a second driver (ADR 004).
 - `mayLogIn` also lets addresses in `TEAM_EMAILS` sign up, so a new team member needs no second entry in `SIGNUP_ALLOWLIST`.
+- No update mails (starter 769df02): only the team has accounts, patients book without one by design. There is nobody to send product updates to, and the opt-in would only add a checkbox to the team's login. Adopt them, with the shared mail template, once drivers or patients get accounts.
 
 ## Konventionen
 
