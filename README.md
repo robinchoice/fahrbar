@@ -81,6 +81,17 @@ fahrbar is reachable from outside but closed until Robin explicitly gives the go
 - Opening, only after Robin's go: set `SIGNUP_OPEN=true` in Coolify and redeploy. Check: request a login link for a new address.
 - `login-link` creates accounts itself, the preview's test account needs no entry. The script takes any address, the limit sits on the server: agents don't get into the container, only through the root-owned `login-link` from the kontor, which always passes admin@pleasance.org. Whoever gets into the container has the database anyway.
 
+### For agents
+
+Other people's agents read the public content without HTML, following [llms.txt](https://llmstxt.org). The source is `publicPages` in `apps/api/src/lib/public-pages.ts`, the routes are in `apps/api/src/routes/agents.ts`. The web server forwards these paths to the API.
+
+- `/llms.txt`: entry point with name, tagline and every public page as a link to its Markdown.
+- `/llms-full.txt`: all pages in one file.
+- `<page>.md`: every page as Markdown, the start page as `/index.md`. An agent asking for a page with `Accept: text/markdown` gets the Markdown under the same URL, everyone else the HTML.
+- Language: `?lang=de|en`, else `Accept-Language`, else German. Links keep a `?lang=`.
+- Public content only: the start page. Practices' booking links and patients' ride links are handed out personally and stay out.
+- Try it: `curl localhost:5173/llms.txt` while `bun run dev` runs.
+
 ### Secret scan
 
 The repo is public: code, history and CI logs. `.github/workflows/secrets.yml` runs on every push to every branch and on pull requests from forks, without `paths-ignore`, and scans the new commits with gitleaks (Docker image pinned by digest). A finding fails the run, `--redact` keeps the value out of the log.

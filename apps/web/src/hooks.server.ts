@@ -13,10 +13,14 @@ dns.setDefaultResultOrder('ipv4first');
 // proxy does the same for the browser, fetches in server loads land here.
 const API_ORIGIN = process.env.API_INTERNAL_URL || (dev ? 'http://localhost:3000' : 'http://api:3000');
 
+// Public content for agents comes from the API, see apps/api/src/routes/agents.ts
+const AGENT_PATH = /^\/llms(-full)?\.txt$|\.md$/;
+
 // PostHog's browser SDK sends to /ingest (see hooks.client.ts). Going through
 // this server keeps the CSP at 'self' and gets past ad blockers.
 function upstream(url: URL) {
-  if (url.pathname.startsWith('/api/')) return `${API_ORIGIN}${url.pathname}${url.search}`;
+  if (url.pathname.startsWith('/api/') || AGENT_PATH.test(url.pathname))
+    return `${API_ORIGIN}${url.pathname}${url.search}`;
   if (url.pathname.startsWith('/ingest/static/') || url.pathname.startsWith('/ingest/array/'))
     return `https://eu-assets.i.posthog.com${url.pathname.slice(7)}${url.search}`;
   if (url.pathname.startsWith('/ingest/')) return `https://eu.i.posthog.com${url.pathname.slice(7)}${url.search}`;
@@ -37,12 +41,21 @@ export const handle: Handle = async ({ event, resolve }) => {
   const target = upstream(event.url);
   const response = target
     ? await proxy(event.request, target)
-    : await resolve(event, {
+    : ((await markdown(event.request, event.url)) ??
+      (await resolve(event, {
         transformPageChunk: ({ html }) => html.replace('<html lang="de">', `<html lang="${locale}">`),
-      });
+      })));
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);
   return response;
 };
+
+// Agents that ask for Markdown get a public page as its .md, all others the HTML
+async function markdown(request: Request, url: URL) {
+  if (request.method !== 'GET' || !request.headers.get('accept')?.includes('text/markdown')) return;
+  const path = url.pathname === '/' ? '/index.md' : `${url.pathname.replace(/\/$/, '')}.md`;
+  const response = await proxy(request, `${API_ORIGIN}${path}${url.search}`);
+  if (response.ok) return response;
+}
 
 async function proxy(request: Request, target: string) {
   const headers = new Headers(request.headers);
