@@ -81,6 +81,14 @@ fahrbar is reachable from outside but closed until Robin explicitly gives the go
 - Opening, only after Robin's go: set `SIGNUP_OPEN=true` in Coolify and redeploy. Check: request a login link for a new address.
 - `login-link` creates accounts itself, the preview's test account needs no entry.
 
+### Secret scan
+
+The repo is public: code, history and CI logs. `.github/workflows/secrets.yml` runs on every push to every branch and on pull requests from forks, without `paths-ignore`, and scans the new commits with gitleaks (Docker image pinned by digest). A finding fails the run, `--redact` keeps the value out of the log.
+
+- Rules: the gitleaks defaults plus `.gitleaks.toml`, which only skips `generic-api-key` in `bun.lock` and `pubspec.lock`, where hashes trip it. Real token formats (`ghp_…`, `sk_live_…`) are still caught there.
+- False positive: add the `Fingerprint` from the log as a line to `.gitleaksignore`.
+- Real finding: the scan runs after the push, so the secret is already public. Rotate it right away, removing it from the code or the history isn't enough.
+
 Decisions are recorded in [`docs/decisions/`](docs/decisions/).
 
 ---
