@@ -100,6 +100,17 @@ The repo is public: code, history and CI logs. `.github/workflows/secrets.yml` r
 - False positive: add the `Fingerprint` from the log as a line to `.gitleaksignore`.
 - Real finding: the scan runs after the push, so the secret is already public. Rotate it right away, removing it from the code or the history isn't enough.
 
+### App releases
+
+`.github/workflows/mobile.yml` builds release versions of the app with `--obfuscate --split-debug-info`, so stack traces from the app (in GlitchTip too) only show obfuscated names. The symbols stay with the CI run for 90 days as the artifact `symbols-android` or `symbols-ios`, and the app's build number is that run's number (`gh run list -w mobile.yml --json number,databaseId` gives the run ID). To make a trace readable:
+
+```sh
+gh run download <run-id> -n symbols-android -D /tmp/symbols
+flutter symbolize -i trace.txt -d /tmp/symbols/app.android-arm64.symbols   # iOS: app.ios-arm64.symbols
+```
+
+`trace.txt` is the raw stack trace with `build_id` and `abs …/virt …` lines (e.g. from `adb logcat`). Builds older than 90 days can't be symbolized any more. Obfuscation is no protection: everything in the web bundle and the app can be read, so no secrets in the client.
+
 Decisions are recorded in [`docs/decisions/`](docs/decisions/).
 
 ---
