@@ -10,7 +10,11 @@ const db = createDb(process.env.DATABASE_URL!);
 const app = createApp(db);
 const ip = crypto.randomUUID();
 const slug = `test-${crypto.randomUUID().slice(0, 8)}`;
-const inDays = (days: number) => today(new Date(Date.now() + days * 24 * 60 * 60 * 1000));
+const inDays = (days: number) => {
+  const date = new Date(`${today()}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return today(date);
+};
 
 beforeAll(() => migrateDb(process.env.DATABASE_URL!));
 afterAll(async () => {
