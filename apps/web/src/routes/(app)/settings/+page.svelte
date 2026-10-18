@@ -1,44 +1,52 @@
 <script lang="ts">
   import type { Passkey } from '@app/shared';
-  import { browserSupportsWebAuthn } from '@simplewebauthn/browser';
+  import { browserSupportsWebAuthn, WebAuthnError } from '@simplewebauthn/browser';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import { addPasskey, listPasskeys, removePasskey } from '$lib/auth.svelte';
   import Button from '$lib/components/Button.svelte';
   import { t } from '$lib/i18n';
-  import { toast } from '$lib/toast.svelte';
+  import { toast, toastError } from '$lib/toast.svelte';
 
   const day = (iso: string) =>
     new Date(iso).toLocaleDateString(page.data.locale === 'de' ? 'de-DE' : 'en-GB', { dateStyle: 'long' });
 
-  let passkeys = $state<Passkey[]>([]);
+  let passkeys = $state<Passkey[] | null>(null);
   let canAddPasskey = $state(false);
   let adding = $state(false);
+  let removing = $state<string | null>(null);
 
   onMount(async () => {
     canAddPasskey = browserSupportsWebAuthn();
-    passkeys = await listPasskeys().catch(() => []);
+    passkeys = await listPasskeys().catch(() => null);
   });
 
   async function add() {
     adding = true;
     try {
-      passkeys = [...passkeys, await addPasskey()];
+      const passkey = await addPasskey();
+      passkeys = [...(passkeys ?? []), passkey];
       toast(t().passkeyAdded);
-    } catch {
-      // Cancelled in the browser's dialog, or the API client showed the error
+    } catch (err) {
+      if (err instanceof WebAuthnError && err.code === 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED')
+        toastError(t().passkeyExists);
+      else if (err instanceof WebAuthnError && err.name !== 'NotAllowedError' && err.name !== 'AbortError')
+        toastError(t().passkeyNotAdded);
     } finally {
       adding = false;
     }
   }
 
   async function remove(id: string) {
+    removing = id;
     try {
       await removePasskey(id);
-      passkeys = passkeys.filter((passkey) => passkey.id !== id);
+      passkeys = passkeys?.filter((passkey) => passkey.id !== id) ?? null;
       toast(t().passkeyRemoved);
     } catch {
       // The API client already shows the error as a toast
+    } finally {
+      removing = null;
     }
   }
 </script>
@@ -48,7 +56,7 @@
 <section>
   <h2>{t().passkeys}</h2>
   <p>{t().passkeysHint}</p>
-  {#if passkeys.length}
+  {#if passkeys?.length}
     <ul>
       {#each passkeys as passkey (passkey.id)}
         <li>
@@ -59,11 +67,16 @@
                 · {t().passkeyUsedOn(day(passkey.lastUsedAt))}{/if}
             </p>
           </div>
-          <Button variant="secondary" onclick={() => remove(passkey.id)}>{t().removePasskey}</Button>
+          <Button
+            variant="secondary"
+            loading={removing === passkey.id}
+            disabled={!!removing}
+            onclick={() => remove(passkey.id)}>{t().removePasskey}</Button
+          >
         </li>
       {/each}
     </ul>
-  {:else}
+  {:else if passkeys}
     <p>{t().noPasskeys}</p>
   {/if}
   {#if canAddPasskey}

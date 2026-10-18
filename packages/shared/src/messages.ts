@@ -8,6 +8,8 @@ const de = {
   passkeyRemoved: 'Passkey entfernt',
   removePasskey: 'Entfernen',
   passkeyAdded: 'Passkey hinzugefügt',
+  passkeyExists: 'Auf diesem Gerät gibt es schon einen Passkey für dein Konto.',
+  passkeyNotAdded: 'Der Passkey ließ sich nicht anlegen.',
   addPasskey: 'Passkey hinzufügen',
   noPasskeys: 'Noch kein Passkey.',
   passkeysHint:
@@ -228,6 +230,8 @@ const en: Messages = {
   passkeyRemoved: 'Passkey removed',
   removePasskey: 'Remove',
   passkeyAdded: 'Passkey added',
+  passkeyExists: 'This device already has a passkey for your account.',
+  passkeyNotAdded: 'The passkey could not be added.',
   addPasskey: 'Add passkey',
   noPasskeys: 'No passkey yet.',
   passkeysHint:

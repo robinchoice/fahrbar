@@ -96,6 +96,7 @@ test('the admin invites a tester, who can log in afterwards', async ({ page }) =
   expect(await sql`select 1 from users where email = ${tester}`).toHaveLength(1);
 
   await page.getByRole('button', { name: 'Abmelden' }).click();
+  await expect(page).toHaveURL(/\/$/);
   await openHydrated(page, '/login');
   await page.getByLabel('E-Mail').fill(tester);
   await page.getByRole('button', { name: 'Login-Mail senden' }).click();
@@ -133,9 +134,13 @@ test('a passkey added in the settings logs in without mail until it is removed',
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click();
   await expect(page.getByText('Passkey hinzugefügt')).toBeVisible();
   await expect(page.getByText(/^Hinzugefügt am/)).toBeVisible();
+  await page.getByRole('button', { name: 'Passkey hinzufügen' }).click();
+  await expect(page.getByText('Auf diesem Gerät gibt es schon einen Passkey für dein Konto.')).toBeVisible();
+  await expect(page.getByText(/^Hinzugefügt am/)).toHaveCount(1);
 
   // The virtual authenticator picks the passkey the login page offers as autofill
   await page.getByRole('button', { name: 'Abmelden' }).click();
+  await expect(page).toHaveURL(/\/$/);
   await page.goto('/login?next=%2Fsettings');
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByText(/zuletzt benutzt am/)).toBeVisible();
@@ -145,14 +150,27 @@ test('a passkey added in the settings logs in without mail until it is removed',
     PublicKeyCredential.isConditionalMediationAvailable = async () => false;
   });
   await page.getByRole('button', { name: 'Abmelden' }).click();
+  await expect(page).toHaveURL(/\/$/);
   await openHydrated(page, '/login');
   await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click();
   await expect(page).toHaveURL(/\/team$/);
   await page.goto('/settings');
 
-  await page.getByRole('button', { name: 'Entfernen' }).click();
+  let finishRemoval!: () => void;
+  const removal = new Promise<void>((resolve) => {
+    finishRemoval = resolve;
+  });
+  await page.route('**/api/v1/auth/passkeys/*', async (route) => {
+    if (route.request().method() === 'DELETE') await removal;
+    await route.continue();
+  });
+  const removeButton = page.locator('section li button').first();
+  await removeButton.click();
+  await expect(removeButton).toBeDisabled();
+  finishRemoval();
   await expect(page.getByText('Noch kein Passkey.')).toBeVisible();
   await page.getByRole('button', { name: 'Abmelden' }).click();
+  await expect(page).toHaveURL(/\/$/);
   await openHydrated(page, '/login');
   await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click();
   await expect(page.getByText('Diesen Passkey kennen wir nicht.', { exact: false })).toBeVisible();
@@ -177,4 +195,15 @@ test('the login page redeems a mailed code and returns to the requested page', a
   const cookie = (await page.context().cookies()).find((entry) => entry.name === 'session')!;
   expect(cookie.httpOnly).toBe(true);
   expect(cookie.expires).toBeGreaterThan(Date.now() / 1000 + 364 * 86400);
+});
+
+test('a failed passkey list does not claim the account has no passkeys', async ({ page }) => {
+  await logInAs(page, freshEmail());
+  await page.route('**/api/v1/auth/passkeys', (route) =>
+    route.fulfill({ status: 503, json: { error: 'Passkeys unavailable' } }),
+  );
+  await page.goto('/settings');
+  await expect(page.getByText('Passkeys unavailable')).toBeVisible();
+  await expect(page.getByText('Noch kein Passkey.')).toBeHidden();
+  errors = errors.filter((error) => !error.includes('status of 503'));
 });
