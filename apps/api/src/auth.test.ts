@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, spyOn, test } from 'bun:test';
-import { createDb, migrateDb, sessions, users } from '@app/db';
+import { createDb, migrateDb, passkeys, sessions, users } from '@app/db';
 import { eq } from 'drizzle-orm';
 import { createApp } from './app';
 import { generateToken, hashToken } from './middleware/auth';
@@ -46,7 +46,7 @@ function lastMailedToken() {
 }
 
 function lastMailedCode() {
-  return lastMail()?.match(/Dein Code: (\d{6})/)?.[1];
+  return lastMail()?.match(/(\d{6}) ist dein Login-Code/)?.[1];
 }
 
 const otherCode = (code: string) => (code === '000000' ? '000001' : '000000');
@@ -251,9 +251,94 @@ test('a session in use is renewed', async () => {
   const me = await app.request('/api/v1/auth/me', { headers: { cookie: `session=${token}` } });
   expect(me.headers.get('set-cookie')).toContain(`session=${token}`);
   const [renewed] = await db.select().from(sessions).where(eq(sessions.id, session!.id));
-  expect(renewed!.expiresAt.getTime()).toBeGreaterThan(Date.now() + 29 * 24 * 60 * 60 * 1000);
+  expect(renewed!.expiresAt.getTime()).toBeGreaterThan(Date.now() + 364 * 24 * 60 * 60 * 1000);
 
   // Renewed sessions are left alone for a day
   const again = await app.request('/api/v1/auth/me', { headers: { cookie: `session=${token}` } });
   expect(again.headers.get('set-cookie')).toBeNull();
+});
+
+// The full ceremony runs in the browser test with Chromium's virtual authenticator
+test('passkeys belong to logged-in accounts and fail closed', async () => {
+  const asOwner = await sessionFor(freshEmail());
+  const asOther = await sessionFor(freshEmail());
+  expect((await post('/auth/passkeys/register/options', {})).status).toBe(401);
+
+  const register = await body(post('/auth/passkeys/register/options', {}, asOwner));
+  expect(register.rp.id).toBe(new URL(process.env.APP_URL!).hostname);
+  expect(register.authenticatorSelection.residentKey).toBe('required');
+
+  const login = await body(post('/auth/passkeys/login/options', {}));
+  expect(login.rpId).toBe(register.rp.id);
+  expect(login.allowCredentials).toBeUndefined();
+
+  const response = { id: 'unknown', rawId: 'unknown', type: 'public-key', response: {}, clientExtensionResults: {} };
+  const unknown = await post('/auth/passkeys/login', { response });
+  expect(unknown.status).toBe(400);
+  expect((await body(unknown)).error).toBe('Diesen Passkey kennen wir nicht. Melde dich per Mail an.');
+
+  const owner = (await body(app.request('/api/v1/auth/me', { headers: asOwner }))).user;
+  const id = `test-${crypto.randomUUID()}`;
+  await db.insert(passkeys).values({ id, userId: owner.id, publicKey: Buffer.from([1]), counter: 0, backedUp: true });
+  const forged = await post('/auth/passkeys/login', { response: { ...response, id, rawId: id } });
+  expect(forged.status).toBe(400);
+  expect(forged.headers.get('set-cookie')).toBeNull();
+
+  const del = (headers: Record<string, string>) =>
+    app.request(`/api/v1/auth/passkeys/${id}`, { method: 'DELETE', headers });
+  expect((await del(asOther)).status).toBe(404);
+  expect((await body(app.request('/api/v1/auth/passkeys', { headers: asOwner }))).passkeys).toHaveLength(1);
+  expect((await del(asOwner)).status).toBe(200);
+  expect((await body(app.request('/api/v1/auth/passkeys', { headers: asOwner }))).passkeys).toEqual([]);
+});
+
+test('the web redeems the code from its login mail into a cookie without exposing the token', async () => {
+  const email = freshEmail();
+  expect((await post('/auth/magic-link', { email }, { 'x-forwarded-for': crypto.randomUUID() })).status).toBe(200);
+  const code = lastMailedCode()!;
+  expect(code).toMatch(/^\d{6}$/);
+  expect(lastMail()).toContain(`Oder gib auf der Login-Seite diesen Code ein: ${code}`);
+  const verify = await post('/auth/code/verify', { email, code, cookie: true });
+  expect(verify.status).toBe(200);
+  const cookie = verify.headers.get('set-cookie')!;
+  expect(cookie).toContain('HttpOnly');
+  expect(cookie).toContain('Max-Age=31536000');
+  const result = await body(verify);
+  expect(result.user.email).toBe(email);
+  expect(result.token).toBeUndefined();
+  const me = await body(app.request('/api/v1/auth/me', { headers: { cookie } }));
+  expect(me.user.email).toBe(email);
+  expect((await post('/auth/code/verify', { email, code, cookie: true })).status).toBe(400);
+});
+
+test('an address removed from the allowlist cannot redeem an issued link or code', async () => {
+  const email = freshEmail();
+  expect((await post('/auth/magic-link', { email }, { 'x-forwarded-for': crypto.randomUUID() })).status).toBe(200);
+  const token = lastMailedToken();
+  const code = lastMailedCode();
+  delete process.env.SIGNUP_OPEN;
+  try {
+    const link = await post('/auth/verify', { token });
+    expect(link.status).toBe(403);
+    expect(link.headers.get('set-cookie')).toBeNull();
+    const verify = await post('/auth/code/verify', { email, code, cookie: true });
+    expect(verify.status).toBe(403);
+    expect(verify.headers.get('set-cookie')).toBeNull();
+    expect(await db.select().from(users).where(eq(users.email, email))).toEqual([]);
+  } finally {
+    process.env.SIGNUP_OPEN = 'true';
+  }
+});
+
+test('bearer sessions slide to 365 days without setting a web cookie', async () => {
+  const asUser = await sessionFor(freshEmail());
+  const token = asUser.cookie.slice('session='.length);
+  const me = await app.request('/api/v1/auth/me', { headers: { authorization: `Bearer ${token}` } });
+  expect(me.status).toBe(200);
+  expect(me.headers.get('set-cookie')).toBeNull();
+  const [row] = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.tokenHash, hashToken(token)));
+  expect(row!.expiresAt.getTime()).toBeGreaterThan(Date.now() + 364 * 24 * 60 * 60 * 1000);
 });

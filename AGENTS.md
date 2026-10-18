@@ -25,6 +25,8 @@
 - The worker (`apps/api/src/worker.ts`, service `worker` from the API image) deletes rides a week after their morning, which the booking page promises.
 - Mornings are dates in Freiburg (`today()` in `packages/shared`), not timestamps.
 
+- Web passkeys depend on the hostname in `APP_URL`; after a domain change, users log in by mail and register a new passkey.
+
 ## Abweichungen vom Standard
 
 - No PostHog (`PUBLIC_POSTHOG_KEY` stays empty): a visit to a practice's booking link must not reach a third party.
@@ -32,6 +34,7 @@
 - No Bitcoin/Lightning: the pilot is paid in cash by decision (ADR 003), there is no payment integration.
 - `apps/mobile` is only the starter scaffold until the pilot has a second driver (ADR 004).
 - `mayLogIn` also lets addresses in `TEAM_EMAILS` sign up, so a new team member needs no second entry in `SIGNUP_ALLOWLIST`.
+- No native passkeys (starter c12ba8f) yet: `ANDROID_CERT_SHA256` is unavailable and app signing/Associated Domains need confirmation. Tracked as “Braucht Robin” in the backlog; the pilot app stays a scaffold (ADR 004).
 - No update mails (starter 769df02): only the team has accounts, patients book without one by design. There is nobody to send product updates to, and the opt-in would only add a checkbox to the team's login. Adopt them, with the shared mail template, once drivers or patients get accounts.
 
 ## Konventionen

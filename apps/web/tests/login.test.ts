@@ -28,7 +28,7 @@ test('the login form sends a magic link to an existing account', async ({ page }
   await sql`insert into users (email, name) values (${email}, 'Lena')`;
   await openHydrated(page, '/login');
   await page.getByLabel('E-Mail').fill(email);
-  await page.getByRole('button', { name: 'Login-Link senden' }).click();
+  await page.getByRole('button', { name: 'Login-Mail senden' }).click();
   await expect(page.getByText('Check deine E-Mails')).toBeVisible();
 });
 
@@ -36,7 +36,7 @@ test('the login form sends a magic link to an existing account', async ({ page }
 test('strangers learn that sign-up is still closed', async ({ page }) => {
   await openHydrated(page, '/login');
   await page.getByLabel('E-Mail').fill(freshEmail());
-  await page.getByRole('button', { name: 'Login-Link senden' }).click();
+  await page.getByRole('button', { name: 'Login-Mail senden' }).click();
   await expect(page.getByText('Die Registrierung ist noch geschlossen.', { exact: false })).toBeVisible();
   await expect(page.getByText('Check deine E-Mails')).toBeHidden();
   // The browser logs the expected 403 as an error
@@ -60,6 +60,7 @@ test('a magic link opens the team area until logout', async ({ page }) => {
   const email = freshEmail();
   const token = randomBytes(32).toString('hex');
   const tokenHash = createHash('sha256').update(token).digest('hex');
+  await sql`insert into users (email, name) values (${email}, 'Lena') on conflict do nothing`;
   await sql`insert into magic_links (email, token_hash, expires_at)
     values (${email}, ${tokenHash}, ${new Date(Date.now() + 15 * 60_000)})`;
 
@@ -77,6 +78,7 @@ test('a magic link opens the team area until logout', async ({ page }) => {
 async function logInAs(page: Page, email: string) {
   const token = randomBytes(32).toString('hex');
   const tokenHash = createHash('sha256').update(token).digest('hex');
+  await sql`insert into users (email, name) values (${email}, 'Lena') on conflict do nothing`;
   await sql`insert into magic_links (email, token_hash, expires_at)
     values (${email}, ${tokenHash}, ${new Date(Date.now() + 15 * 60_000)})`;
   await page.goto(`/auth/verify?token=${token}`);
@@ -96,7 +98,7 @@ test('the admin invites a tester, who can log in afterwards', async ({ page }) =
   await page.getByRole('button', { name: 'Abmelden' }).click();
   await openHydrated(page, '/login');
   await page.getByLabel('E-Mail').fill(tester);
-  await page.getByRole('button', { name: 'Login-Link senden' }).click();
+  await page.getByRole('button', { name: 'Login-Mail senden' }).click();
   await expect(page.getByText('Check deine E-Mails')).toBeVisible();
 });
 
@@ -105,4 +107,74 @@ test('others see no invite and get 403 from the API', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Tester einladen' })).toBeHidden();
   const res = await page.request.post('/api/v1/auth/invite', { data: { email: freshEmail() } });
   expect(res.status()).toBe(403);
+});
+
+// Chromium's virtual authenticator stands in for Touch ID or the phone
+async function addAuthenticator(page: Page) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('WebAuthn.enable');
+  await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: {
+      protocol: 'ctap2',
+      transport: 'internal',
+      hasResidentKey: true,
+      hasUserVerification: true,
+      isUserVerified: true,
+      automaticPresenceSimulation: true,
+    },
+  });
+}
+
+test('a passkey added in the settings logs in without mail until it is removed', async ({ page }) => {
+  await addAuthenticator(page);
+  await logInAs(page, freshEmail());
+  await page.goto('/settings');
+  await expect(page.getByText('Noch kein Passkey.')).toBeVisible();
+  await page.getByRole('button', { name: 'Passkey hinzufügen' }).click();
+  await expect(page.getByText('Passkey hinzugefügt')).toBeVisible();
+  await expect(page.getByText(/^Hinzugefügt am/)).toBeVisible();
+
+  // The virtual authenticator picks the passkey the login page offers as autofill
+  await page.getByRole('button', { name: 'Abmelden' }).click();
+  await page.goto('/login?next=%2Fsettings');
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByText(/zuletzt benutzt am/)).toBeVisible();
+
+  // Browsers without the autofill use the button
+  await page.addInitScript(() => {
+    PublicKeyCredential.isConditionalMediationAvailable = async () => false;
+  });
+  await page.getByRole('button', { name: 'Abmelden' }).click();
+  await openHydrated(page, '/login');
+  await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click();
+  await expect(page).toHaveURL(/\/team$/);
+  await page.goto('/settings');
+
+  await page.getByRole('button', { name: 'Entfernen' }).click();
+  await expect(page.getByText('Noch kein Passkey.')).toBeVisible();
+  await page.getByRole('button', { name: 'Abmelden' }).click();
+  await openHydrated(page, '/login');
+  await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click();
+  await expect(page.getByText('Diesen Passkey kennen wir nicht.', { exact: false })).toBeVisible();
+  // The browser logs the expected 400 as an error
+  errors = errors.filter((error) => !error.includes('status of 400'));
+});
+
+test('the login page redeems a mailed code and returns to the requested page', async ({ page }) => {
+  const email = freshEmail();
+  await sql`insert into users (email, name) values (${email}, 'Lena')`;
+  await openHydrated(page, '/login?next=%2Fsettings');
+  await page.getByLabel('E-Mail').fill(email);
+  await page.getByRole('button', { name: 'Login-Mail senden' }).click();
+  await expect(page.getByLabel('Code', { exact: true })).toBeVisible();
+  const code = '123456';
+  const codeHash = createHash('sha256').update(code).digest('hex');
+  await sql`insert into login_codes (email, code_hash, expires_at)
+    values (${email}, ${codeHash}, ${new Date(Date.now() + 15 * 60_000)})`;
+  await page.getByLabel('Code', { exact: true }).fill(code);
+  await page.getByRole('button', { name: 'Einloggen', exact: true }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  const cookie = (await page.context().cookies()).find((entry) => entry.name === 'session')!;
+  expect(cookie.httpOnly).toBe(true);
+  expect(cookie.expires).toBeGreaterThan(Date.now() / 1000 + 364 * 86400);
 });

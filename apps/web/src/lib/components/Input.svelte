@@ -11,6 +11,7 @@
     required = false,
     autocomplete,
     inputmode,
+    maxlength,
   }: {
     value?: string;
     label: string;
@@ -21,6 +22,7 @@
     required?: boolean;
     autocomplete?: HTMLInputAttributes['autocomplete'];
     inputmode?: HTMLInputAttributes['inputmode'];
+    maxlength?: number;
   } = $props();
 
   // Hint and error describe the field without becoming part of its name
@@ -37,6 +39,7 @@
       {required}
       {autocomplete}
       {inputmode}
+      {maxlength}
       class:invalid={!!error}
       aria-invalid={!!error}
       aria-describedby={error || hint ? note : undefined}

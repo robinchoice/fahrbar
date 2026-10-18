@@ -37,17 +37,19 @@ export async function sendMail({ to, subject, text, html, replyTo, attachments }
   await transport.sendMail({ from, to, subject, text, html, replyTo, attachments });
 }
 
-export function sendMagicLinkEmail(email: string, token: string, next: string | null, texts: Messages) {
+export function sendMagicLinkEmail(email: string, token: string, code: string, next: string | null, texts: Messages) {
   const url = `${process.env.APP_URL}/auth/verify?token=${token}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
   return sendMail({
     to: email,
-    subject: texts.linkSubject(APP_NAME),
-    text: `${texts.linkPlain} ${url}\n\n${texts.linkValid}`,
+    subject: texts.codeSubject(code, APP_NAME),
+    text: `${texts.linkPlain} ${url}\n\n${texts.linkCodeOnPage} ${code}\n\n${texts.linkValid}`,
     html: `
       <div style="font-family: system-ui, sans-serif; max-width: 460px; margin: 0 auto; padding: 2rem; color: #1a1a1a;">
         <h1 style="font-size: 1.4rem; margin: 0 0 1rem;">${APP_NAME}</h1>
         <p style="margin: 0 0 1.5rem;">${texts.linkPrompt}</p>
         <a href="${url}" style="display: inline-block; padding: 0.75rem 1.5rem; background: #1a1a1a; color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600;">${texts.logIn}</a>
+        <p style="margin: 1.5rem 0 0.5rem;">${texts.linkCodeOnPage}</p>
+        <p style="font-size: 2rem; font-weight: 700; letter-spacing: 0.3rem;">${code}</p>
         <p style="color: #666; font-size: 0.85rem; margin: 1.5rem 0 0;">${texts.linkValid}</p>
       </div>
     `,

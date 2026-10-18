@@ -31,6 +31,7 @@
 {#if ready && auth.user}
   <header>
     <a href="/team" class="brand"><img src="/favicon.svg" alt="" width="26" height="26" />{APP_NAME}</a>
+    <Button variant="secondary" href="/settings">{t().settings}</Button>
     <span class="user">{auth.user.name}</span>
     {#if auth.user.admin}
       <Button variant="secondary" href="/invite">{t().inviteTester}</Button>
@@ -48,6 +49,7 @@
   header {
     display: flex;
     gap: 1rem;
+    flex-wrap: wrap;
     align-items: center;
     padding: 0.75rem 1.5rem;
     border-bottom: 1px solid var(--border);

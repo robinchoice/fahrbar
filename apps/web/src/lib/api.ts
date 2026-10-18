@@ -4,6 +4,15 @@ import { toastError } from './toast.svelte';
 // The last failed calls, newest first. Feedback sends them along.
 export const recentErrors: string[] = [];
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+
 function noteError(method: string, path: string, status: number | string) {
   recentErrors.unshift(`${method} /api/v1${path} → ${status}`);
   recentErrors.length = Math.min(recentErrors.length, 5);
@@ -25,9 +34,9 @@ async function request<T>(method: string, path: string, body?: unknown, silent =
 
   if (!res.ok) {
     noteError(method, path, res.status);
-    const { error } = await res.json().catch(() => ({ error: res.statusText }));
+    const { error, code } = await res.json().catch(() => ({ error: res.statusText }));
     if (!silent) toastError(error);
-    throw new Error(error);
+    throw new ApiError(error, code);
   }
   return res.json();
 }

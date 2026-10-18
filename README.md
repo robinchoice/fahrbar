@@ -70,11 +70,19 @@ The browser tests (Playwright) build the web app and start API and web build the
 
 ### Login in the Savor preview
 
-Agents show changes behind the login in the Savor preview. `login-link <slug>` from the kontor runs `bun apps/api/src/login-link.ts <email>` in the API container, which prints a one-time login link, valid for 15 minutes like a mailed one. Sessions in use renew to 30 days on each visit, at most once a day, so the preview stays logged in. Only addresses in `TEAM_EMAILS` see rides, and reading them still needs the team passphrase. The agents' test account admin@pleasance.org has no admin rights in the app (see "Opening sign-up").
+Agents show changes behind the login in the Savor preview. `login-link <slug>` from the kontor runs `bun apps/api/src/login-link.ts <email>` in the API container, which prints a one-time login link, valid for 15 minutes like a mailed one. Sessions in use renew to 365 days on each visit, at most once a day, so the preview stays logged in. Only addresses in `TEAM_EMAILS` see rides, and reading them still needs the team passphrase. The agents' test account admin@pleasance.org has no admin rights in the app (see "Opening sign-up").
+
+### Login and passkeys
+
+The login mail includes a link and a six-digit code, also in the subject. Both are valid for 15 minutes. The web redeems the code into an httpOnly cookie; native clients receive a bearer token. Sessions last 365 days and renew during use at most once a day, equally for web and app.
+
+Logged-in users add and remove web passkeys under `/settings`. The login page offers saved passkeys as email autofill and through a button, using SimpleWebAuthn. Challenges are single-use rows in Postgres, valid for five minutes. Passkeys belong to the hostname in `APP_URL`: after moving domains, users log in by mail and add a new passkey. Locally use `localhost`; a plain HTTP LAN address cannot use WebAuthn. Removed passkeys are rejected and the browser is asked to forget them.
+
+Native passkeys and domain association endpoints are deferred until the app signing certificates and Associated Domains are configured (backlog “Braucht Robin”). The pilot app remains a scaffold.
 
 ### Opening sign-up
 
-fahrbar is reachable from outside but closed until Robin explicitly gives the go to take in external users. Until then magic link and app code only create new accounts for the addresses in `SIGNUP_ALLOWLIST` and `TEAM_EMAILS` (comma-separated). Existing accounts always log in. Strangers get "Sign-up is still closed" from `/auth/magic-link` and `/auth/code`, and no mail goes out. The booking page `/p/<practice>` needs no login and stays open.
+fahrbar is reachable from outside but closed until Robin explicitly gives the go to take in external users. Until then magic link and app code only create new accounts for the addresses in `SIGNUP_ALLOWLIST` and `TEAM_EMAILS` (comma-separated). Existing accounts always log in. Strangers get "Sign-up is still closed" from `/auth/magic-link` and `/auth/code`, and no mail goes out. Link and code redemption check the current allowlist again before creating a session. Passkey registration requires a session and does not open sign-up. The booking page `/p/<practice>` needs no login and stays open.
 
 - Adding a tester: an admin clicks "Tester einladen" at the top of the app (`/invite`) and enters the address. That creates the account and sends a login link, without Coolify or a redeploy. Admins are the addresses in `ADMIN_EMAILS` (comma-separated, by default robin@pleasance.org, the human admin), the API checks it. Inviting opens nothing, `SIGNUP_OPEN` stays as it is.
 - admin@pleasance.org, the agents' admin, never goes into `ADMIN_EMAILS`: agents log in with it in the preview and must neither create accounts past the closed sign-up nor mail third parties.
