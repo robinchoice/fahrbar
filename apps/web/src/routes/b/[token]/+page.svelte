@@ -8,7 +8,15 @@
   import { formatDate } from '$lib/format';
   import { t } from '$lib/i18n';
 
-  type Ride = { status: RideStatus; date: string; start: string; end: string; practice: string; address: string };
+  type Ride = {
+    status: RideStatus;
+    date: string;
+    start: string;
+    end: string;
+    practice: string;
+    address: string;
+    cancellable: boolean;
+  };
 
   const STATUS: Record<RideStatus, keyof Messages> = {
     new: 'statusNew',
@@ -60,7 +68,7 @@
       <dt>{t().statusLabel}</dt>
       <dd>{t()[STATUS[ride.status]]}</dd>
     </dl>
-    {#if ride.status === 'new' || ride.status === 'confirmed'}
+    {#if ride.cancellable}
       {#if sure}
         <Button onclick={cancel} loading={cancelling}>{t().cancelSure}</Button>
       {:else}

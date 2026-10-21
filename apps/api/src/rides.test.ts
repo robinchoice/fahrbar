@@ -102,12 +102,18 @@ test('only team addresses see rides', async () => {
 
   process.env.TEAM_EMAILS = `someone@example.com, ${email.toUpperCase()}`;
   const morning = await practiceWithMorning(4, inDays(7));
-  await request('POST', '/rides', { morningId: morning.id, payload });
+  const { token } = await body(request('POST', '/rides', { morningId: morning.id, payload }));
   const day = await body(request('GET', `/team/mornings/${morning.id}/rides`, undefined, auth));
   expect(day.rides).toEqual([expect.objectContaining({ status: 'new', payload })]);
 
   const changed = await request('PATCH', `/team/rides/${day.rides[0].id}`, { status: 'confirmed' }, auth);
   expect((await body(changed)).ride.status).toBe('confirmed');
+
+  // Once the driver is on the way, the patient can't cancel any more
+  expect((await body(request('GET', `/rides/${token}`))).ride.cancellable).toBe(true);
+  await request('PATCH', `/team/rides/${day.rides[0].id}`, { status: 'picked_up' }, auth);
+  expect((await body(request('GET', `/rides/${token}`))).ride.cancellable).toBe(false);
+  expect((await request('DELETE', `/rides/${token}`)).status).toBe(409);
   expect((await request('DELETE', `/team/mornings/${morning.id}`, undefined, auth)).status).toBe(409);
   expect((await request('GET', '/team/mornings/not-an-id/rides', undefined, auth)).status).toBe(404);
 });
