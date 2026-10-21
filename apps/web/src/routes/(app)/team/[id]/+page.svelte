@@ -8,6 +8,7 @@
     type Ride,
     type RideDetails,
     type RideStatus,
+    rideDetailsSchema,
   } from '@app/shared';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
@@ -46,7 +47,10 @@
     const opened = await Promise.all(
       day.rides.map(async (ride) => ({
         ...ride,
-        details: (await decryptRide(teamKey.key!, ride.payload).catch(() => null)) as RideDetails | null,
+        // Unreadable: another key, or a payload that isn't ride details
+        details: await decryptRide(teamKey.key!, ride.payload)
+          .then((details) => rideDetailsSchema.parse(details))
+          .catch(() => null),
       })),
     );
     pickups = opened.sort((a, b) => (a.details?.appointment ?? '').localeCompare(b.details?.appointment ?? ''));

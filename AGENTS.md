@@ -23,7 +23,7 @@
 - API and web tests put a team key with the passphrase `local test passphrase` into the database when there is none. In the local dev database that is the key to unlock `/team`.
 - Only addresses in `TEAM_EMAILS` see rides. Anyone else can log in but gets no access.
 - The worker (`apps/api/src/worker.ts`, service `worker` from the API image) deletes rides a week after their morning, which the booking page promises.
-- Mornings are dates in Freiburg (`today()` in `packages/shared`), not timestamps.
+- Mornings are dates in Freiburg (`today()` in `packages/shared`), not timestamps. Shift them with `addDays`, never with `Date.now()` plus or minus hours: around the clock change that lands on the wrong day.
 
 - Web passkeys depend on the hostname in `APP_URL`; after a domain change, users log in by mail and register a new passkey.
 
