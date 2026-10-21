@@ -1,5 +1,5 @@
 import { mornings, practices, rides, teamKey } from '@app/db';
-import { bookRideSchema, today } from '@app/shared';
+import { bookRideSchema, type RideStatus, today } from '@app/shared';
 import { and, asc, count, eq, gt } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { t } from '../lib/i18n';
@@ -16,7 +16,7 @@ const tokenChecksPerIp = rateLimit('ride-tokens-per-ip', 60, HOUR);
 const upcoming = () => gt(mornings.date, today());
 
 // A patient cancels until the morning itself, as long as nobody is on the way
-const cancellable = (ride: { status: string; date: string }) =>
+const cancellable = (ride: { status: RideStatus; date: string }) =>
   (ride.status === 'new' || ride.status === 'confirmed') && ride.date >= today();
 
 // Patients book without an account. All they get back is a token to look at

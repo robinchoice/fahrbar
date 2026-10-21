@@ -8,7 +8,7 @@
   import { formatDate } from '$lib/format';
   import { t } from '$lib/i18n';
 
-  type Ride = {
+  type BookedRide = {
     status: RideStatus;
     date: string;
     start: string;
@@ -25,7 +25,7 @@
     arrived: 'statusArrived',
   };
 
-  let ride = $state<Ride | null>(null);
+  let ride = $state<BookedRide | null>(null);
   let missing = $state(false);
   let sure = $state(false);
   let cancelling = $state(false);
@@ -34,7 +34,7 @@
 
   onMount(async () => {
     try {
-      ride = (await api.get<{ ride: Ride }>(path, true)).ride;
+      ride = (await api.get<{ ride: BookedRide }>(path, true)).ride;
     } catch {
       missing = true;
     }

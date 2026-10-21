@@ -8,16 +8,12 @@ target.pathname = `/${name}`;
 
 let child: Bun.Subprocess | undefined;
 let signal: 'SIGINT' | 'SIGTERM' | undefined;
-const interrupt = () => {
-  signal = 'SIGINT';
-  child?.kill(signal);
+const forward = (received: 'SIGINT' | 'SIGTERM') => {
+  signal = received;
+  child?.kill(received);
 };
-const terminate = () => {
-  signal = 'SIGTERM';
-  child?.kill(signal);
-};
-process.on('SIGINT', interrupt);
-process.on('SIGTERM', terminate);
+process.on('SIGINT', forward);
+process.on('SIGTERM', forward);
 
 let exitCode = 0;
 try {
@@ -38,7 +34,5 @@ try {
   }
 } finally {
   await sql.end();
-  process.off('SIGINT', interrupt);
-  process.off('SIGTERM', terminate);
 }
 process.exit(signal ? (signal === 'SIGINT' ? 130 : 143) : exitCode);

@@ -71,7 +71,7 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     const { child, until } = start(
       'index',
       `const original = await import('@app/db');
-      const { createDb: originalCreateDb, migrateDb: originalMigrateDb } = original;
+      const { migrateDb: originalMigrateDb } = original;
       mock.module('@app/db', () => ({ ...original, migrateDb: async (url) => {
         console.log('migration-started');
         await Bun.sleep(300);
@@ -94,7 +94,7 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     const { child, until } = start(
       'worker',
       `const original = await import('@app/db');
-      const { createDb: originalCreateDb, migrateDb: originalMigrateDb } = original;
+      const { createDb: originalCreateDb } = original;
       mock.module('@app/db', () => ({ ...original, createDb: (url) => {
         const db = originalCreateDb(url);
         return new Proxy(db, { get(target, property) {
@@ -124,7 +124,7 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     const { child, until } = start(
       'worker',
       `const original = await import('@app/db');
-      const { createDb: originalCreateDb, migrateDb: originalMigrateDb } = original;
+      const { createDb: originalCreateDb } = original;
       mock.module('@app/db', () => ({ ...original, createDb: (url) => {
         const db = originalCreateDb(url);
         return new Proxy(db, { get(target, property) {
