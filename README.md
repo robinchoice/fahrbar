@@ -112,7 +112,9 @@ The repo is public: code, history and CI logs. `.github/workflows/secrets.yml` r
 
 ### App releases
 
-The mobile workflow checks `flutter analyze`, `flutter test` and `node --test tool/testflight.test.mjs` in `apps/mobile`. Main and manual iOS builds distribute internally; only pushed `v*` release tags distribute to external testers and submit for beta review. Agents create release tags only when Robin explicitly asks, because external distribution notifies testers.
+The mobile workflow checks `flutter analyze`, `flutter test` and `node --test tool/testflight.test.mjs` in `apps/mobile`. iOS builds run only for `v*` tags and manual starts (`gh workflow run mobile.yml`) to limit macOS minutes. Manual builds distribute internally; only pushed `v*` release tags distribute to external testers and submit for beta review. Agents create release tags only when Robin explicitly asks, because external distribution notifies testers.
+
+Android builds on `main`, release tags and manual starts produce an AAB artifact. With an upload keystore, the GitHub secret `PLAY_SERVICE_ACCOUNT_JSON` and repo variable `PLAY_UPLOAD=true`, they also upload to the internal Play test. Enable the variable only after the first bundle has been uploaded manually in the Play Console. Uploads are serialized across branches and tags.
 
 Before enabling iOS builds, configure GitHub variables `API_URL`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_BUNDLE_ID` (matching the iOS bundle ID) and `TESTFLIGHT_INTERNAL_GROUP` (exact group name). Release tags also require `TESTFLIGHT_EXTERNAL_GROUP`. Existing signing secrets remain unchanged.
 
