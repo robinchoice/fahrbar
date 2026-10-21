@@ -165,7 +165,9 @@ export const morningSchema = z
     end: time,
     capacity: z.number().int().min(1).max(12),
   })
-  .refine((m) => toMinutes(m.end) - toMinutes(m.start) >= 60, 'invalidInput');
+  .refine((m) => toMinutes(m.end) - toMinutes(m.start) >= 60, 'invalidInput')
+  // Bookable only until the day before, so a morning for today or earlier would never take a ride
+  .refine((m) => m.date > today(), 'morningNotFuture');
 
 export const teamKeySchema = z.object({
   publicKey: z.base64().max(200),

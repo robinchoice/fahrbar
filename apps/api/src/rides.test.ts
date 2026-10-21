@@ -116,6 +116,11 @@ test('only team addresses see rides', async () => {
   expect((await request('DELETE', `/rides/${token}`)).status).toBe(409);
   expect((await request('DELETE', `/team/mornings/${morning.id}`, undefined, auth)).status).toBe(409);
   expect((await request('GET', '/team/mornings/not-an-id/rides', undefined, auth)).status).toBe(404);
+
+  // A morning for today could never be booked, so the API refuses it
+  const plan = { practiceId: morning.practiceId, start: '08:00', end: '12:00', capacity: 4 };
+  expect((await request('POST', '/team/mornings', { ...plan, date: today() }, auth)).status).toBe(400);
+  expect((await request('POST', '/team/mornings', { ...plan, date: inDays(9) }, auth)).status).toBe(200);
 });
 
 test('deleting a morning waits for a booking in progress, then refuses', async () => {
