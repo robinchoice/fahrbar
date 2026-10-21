@@ -112,6 +112,29 @@ test('only team addresses see rides', async () => {
   expect((await request('GET', '/team/mornings/not-an-id/rides', undefined, auth)).status).toBe(404);
 });
 
+test('deleting a morning waits for a booking in progress, then refuses', async () => {
+  const email = `test-${crypto.randomUUID()}@example.com`;
+  const auth = await session(email);
+  process.env.TEAM_EMAILS = email;
+  const morning = await practiceWithMorning(4, inDays(8));
+
+  // Holds the morning's row lock with an uncommitted ride, like POST /rides until it commits
+  const commit = Promise.withResolvers<void>();
+  const booking = db.transaction(async (tx) => {
+    await tx.select({ id: mornings.id }).from(mornings).where(eq(mornings.id, morning.id)).for('update');
+    await tx.insert(rides).values({ morningId: morning.id, payload, manageTokenHash: hashToken(generateToken()) });
+    await commit.promise;
+  });
+  const deletion = request('DELETE', `/team/mornings/${morning.id}`, undefined, auth);
+  await Bun.sleep(200);
+  commit.resolve();
+  await booking;
+
+  expect((await deletion).status).toBe(409);
+  expect(await db.select().from(rides).where(eq(rides.morningId, morning.id))).toHaveLength(1);
+  expect((await request('DELETE', `/team/mornings/${crypto.randomUUID()}`, undefined, auth)).status).toBe(404);
+});
+
 test('the team key is set up only once', async () => {
   const email = `test-${crypto.randomUUID()}@example.com`;
   const auth = await session(email);

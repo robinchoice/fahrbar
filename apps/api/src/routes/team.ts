@@ -145,15 +145,24 @@ export const teamRoutes = new Hono<AppEnv>()
     return c.json({ ride });
   })
 
+  // Only a morning without rides goes. The same row lock as in POST /rides
+  // makes a booking in progress and the deletion wait for each other, so no
+  // ride disappears with its morning (rides cascade).
   .delete('/mornings/:id', async (c) => {
-    const db = c.get('db');
     const id = c.req.param('id');
     if (!isId(id)) return c.json({ error: t(c).notFound }, 404);
-    const [{ booked } = { booked: 0 }] = await db
-      .select({ booked: count() })
-      .from(rides)
-      .where(eq(rides.morningId, id));
-    if (booked > 0) return c.json({ error: t(c).morningHasRides }, 409);
-    await db.delete(mornings).where(eq(mornings.id, id));
+    const result = await c.get('db').transaction(async (tx) => {
+      const [morning] = await tx.select({ id: mornings.id }).from(mornings).where(eq(mornings.id, id)).for('update');
+      if (!morning) return 'missing';
+      const [{ booked } = { booked: 0 }] = await tx
+        .select({ booked: count() })
+        .from(rides)
+        .where(eq(rides.morningId, id));
+      if (booked > 0) return 'booked';
+      await tx.delete(mornings).where(eq(mornings.id, id));
+      return 'deleted';
+    });
+    if (result === 'missing') return c.json({ error: t(c).notFound }, 404);
+    if (result === 'booked') return c.json({ error: t(c).morningHasRides }, 409);
     return c.json({ ok: true });
   });
