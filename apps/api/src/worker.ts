@@ -1,17 +1,16 @@
 import './monitoring';
 import { createDb, mornings, rides, schedules } from '@app/db';
-import { today } from '@app/shared';
+import { addDays, RIDES_KEPT_DAYS, today } from '@app/shared';
 import { and, eq, inArray, lt, lte, sql } from 'drizzle-orm';
 import { captureException } from './monitoring';
 
 // Same image as the API, started with `bun apps/api/src/worker.ts`. The API runs
 // the migrations. Deletes rides a week after their morning, as the booking page promises.
 const db = createDb(process.env.DATABASE_URL!);
-const KEEP_DAYS = 7;
 const PURGE = 'purge-rides';
 
 async function purge() {
-  const cutoff = today(new Date(Date.now() - KEEP_DAYS * 24 * 60 * 60 * 1000));
+  const cutoff = addDays(today(), -RIDES_KEPT_DAYS);
   const past = db.select({ id: mornings.id }).from(mornings).where(lt(mornings.date, cutoff));
   const deleted = await db.delete(rides).where(inArray(rides.morningId, past)).returning({ id: rides.id });
   if (deleted.length) console.log(`[worker] Deleted ${deleted.length} rides`);

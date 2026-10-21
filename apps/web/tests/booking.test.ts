@@ -1,4 +1,4 @@
-import { createTeamKey, today } from '@app/shared';
+import { addDays, createTeamKey, today } from '@app/shared';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
 
@@ -14,7 +14,7 @@ test.beforeAll(async () => {
   const [practice] = await sql`insert into practices (slug, name, address)
     values (${slug}, 'Praxis Dr. Albrecht', 'Bertoldstraße 12, 79098 Freiburg') returning id`;
   await sql`insert into mornings (practice_id, date, start, "end", capacity)
-    values (${practice!.id}, ${today(new Date(Date.now() + 4 * 24 * 60 * 60 * 1000))}, '08:00', '12:00', 4)`;
+    values (${practice!.id}, ${addDays(today(), 4)}, '08:00', '12:00', 4)`;
 });
 
 test.afterAll(async () => {

@@ -73,6 +73,17 @@ export const updateMeSchema = z.object({
 // Today as YYYY-MM-DD in Freiburg, where all mornings take place
 export const today = (now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(now);
 
+// A date shifted by whole days. Arithmetic on Date.now() would miss a day at
+// the clock change, the dates themselves don't.
+export function addDays(date: string, days: number) {
+  const shifted = new Date(`${date}T00:00:00Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted.toISOString().slice(0, 10);
+}
+
+// The worker deletes rides this many days after their morning, as the booking page promises
+export const RIDES_KEPT_DAYS = 7;
+
 // Fixed price per ride in euros, paid in cash on arrival
 export const PRICE = 49;
 

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { createDb, migrateDb, mornings, practices, rides, sessions, teamKey, users } from '@app/db';
-import { createTeamKey, today } from '@app/shared';
+import { addDays, createTeamKey, today } from '@app/shared';
 import { eq } from 'drizzle-orm';
 import { createApp } from './app';
 import { generateToken, hashToken } from './middleware/auth';
@@ -10,11 +10,7 @@ const db = createDb(process.env.DATABASE_URL!);
 const app = createApp(db);
 const ip = crypto.randomUUID();
 const slug = `test-${crypto.randomUUID().slice(0, 8)}`;
-const inDays = (days: number) => {
-  const date = new Date(`${today()}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return today(date);
-};
+const inDays = (days: number) => addDays(today(), days);
 
 beforeAll(() => migrateDb(process.env.DATABASE_URL!));
 afterAll(async () => {

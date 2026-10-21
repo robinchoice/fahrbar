@@ -1,5 +1,13 @@
 import { mornings, practices, rides, teamKey } from '@app/db';
-import { morningSchema, practiceSchema, rideStatusSchema, teamKeySchema, today } from '@app/shared';
+import {
+  addDays,
+  morningSchema,
+  practiceSchema,
+  RIDES_KEPT_DAYS,
+  rideStatusSchema,
+  teamKeySchema,
+  today,
+} from '@app/shared';
 import { asc, count, eq, gte } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
@@ -88,7 +96,7 @@ export const teamRoutes = new Hono<AppEnv>()
 
   // Upcoming mornings and those of the past week, whose rides still exist
   .get('/mornings', async (c) => {
-    const weekAgo = today(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+    const weekAgo = addDays(today(), -RIDES_KEPT_DAYS);
     const list = await c
       .get('db')
       .select({ ...morningColumns, booked: count(rides.id) })
