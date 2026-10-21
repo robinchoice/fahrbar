@@ -66,7 +66,9 @@ bun run dev
 Web runs on http://localhost:5173, the API on port 3000. Without `SMTP_HOST` the login links appear in the API log. Log in at `/login`, set the team passphrase at `/team`, add a practice and a morning, then book through the practice link.
 
 Checks: `bun run check && bun run test`, for the app `flutter analyze && flutter test` in `apps/mobile`.
-The browser tests (Playwright) build the web app and start API and web build themselves on their own ports 53100 and 54100, never against running dev servers, so the CSP applies as in production. Two worktrees testing at the same time pick other ports via `TEST_API_PORT` and `TEST_WEB_PORT`.
+The browser tests (Playwright) build the web app and start API and web build themselves on their own ports 31100 and 31101, never against running dev servers, so the CSP applies as in production. Test ports stay below Linux’s ephemeral range (32768–60999). Two worktrees testing at the same time pick other ports below 32768 via `TEST_API_PORT` and `TEST_WEB_PORT`, e.g. 31102 and 31103.
+
+`bun run test` gives the API and browser suites separate empty databases on the server from `DATABASE_URL`. The user needs `CREATEDB` (local Compose and CI users already have it). After success, failure or SIGINT/SIGTERM only that temporary database is dropped; the development database stays untouched. Running the package scripts in `apps/api` or `apps/web` also isolates the database; direct `bun test` or `playwright test` bypasses it.
 
 ### Login in the Savor preview
 
@@ -109,6 +111,14 @@ The repo is public: code, history and CI logs. `.github/workflows/secrets.yml` r
 - Real finding: the scan runs after the push, so the secret is already public. Rotate it right away, removing it from the code or the history isn't enough.
 
 ### App releases
+
+The mobile workflow checks `flutter analyze`, `flutter test` and `node --test tool/testflight.test.mjs` in `apps/mobile`. Main and manual iOS builds distribute internally; only pushed `v*` release tags distribute to external testers and submit for beta review. Agents create release tags only when Robin explicitly asks, because external distribution notifies testers.
+
+Before enabling iOS builds, configure GitHub variables `API_URL`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_BUNDLE_ID` (matching the iOS bundle ID) and `TESTFLIGHT_INTERNAL_GROUP` (exact group name). Release tags also require `TESTFLIGHT_EXTERNAL_GROUP`. Existing signing secrets remain unchanged.
+
+Create the internal group in App Store Connect with “Enable automatic distribution”; Apple’s API cannot enable it for an existing group. External releases need an external group with testers, completed beta metadata, review contact, any required test login and export compliance. The `testflight` job waits up to an hour for processing and verified internal visibility; uploading alone does not count as success. Apple controls external approval.
+
+After a partial distribution failure, retry the existing build with the same `ASC_*` and `TESTFLIGHT_*` configuration and matching checkout: `node tool/testflight.mjs <build number>` for internal distribution, or `node tool/testflight.mjs --release <build number>` for both groups. The script detects existing assignments and reviews; do not upload the same build number again.
 
 `.github/workflows/mobile.yml` builds release versions of the app with `--obfuscate --split-debug-info`, so stack traces from the app (in GlitchTip too) only show obfuscated names. The symbols stay with the CI run for 90 days as the artifact `symbols-android` or `symbols-ios`, and the app's build number is that run's number (`gh run list -w mobile.yml --json number,databaseId` gives the run ID). To make a trace readable:
 

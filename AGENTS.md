@@ -9,18 +9,23 @@
 
 ## Checks
 
-`bun run check && bun run test` (`test` builds the web app and tests the build), for app changes also `flutter analyze && flutter test` in `apps/mobile`. The browser tests start API and web on their own ports (53100, 54100). If another worktree tests at the same time, use other ports: `TEST_API_PORT=53101 TEST_WEB_PORT=54101 bun run test`.
+`bun run check && bun run test` (`test` builds the web app and tests the build), for app changes also `flutter analyze && flutter test && node --test tool/testflight.test.mjs` in `apps/mobile`. The browser tests start API and web on their own ports (31100, 31101). Ports stay below the Linux ephemeral range (32768–60999). If another worktree tests at the same time, use other ports below 32768: `TEST_API_PORT=31102 TEST_WEB_PORT=31103 bun run test`.
 
 ## Deploy
+
+- Mobile: main and manual iOS builds go to the internal TestFlight group; pushed `v*` tags also distribute externally and submit for beta review. Agents only create release tags when Robin explicitly asks. Configure `ASC_BUNDLE_ID` and `TESTFLIGHT_INTERNAL_GROUP` before enabling iOS builds; release tags also require `TESTFLIGHT_EXTERNAL_GROUP` (README, “App releases”).
 
 - A push to `main` builds the images after green CI and deploys them through the Coolify API (README of the starter, „Deploy auf Coolify“).
 - Check: `gh run watch`. The deploy job is green once `https://fahrbar.pleasance.org/api/health` reports the commit as `revision`.
 
 ## Pitfalls
 
+- Secret scan: Gitleaks 8.30.1 also reads `.gitleaksignore` from the checkout despite `--gitleaks-ignore-path`. The workflow replaces it with the version from `CONFIG_REF`, the base commit for fork PRs.
+- Correlated subselects in `sql` templates: when selecting from one table, Drizzle renders columns without table names, including inside templates. `exists (select 1 from ${subs} where ${subs.userId} = ${users.id})` becomes `where "user_id" = "id"`, where `"id"` belongs to the subselect: silently wrong results. Use a join or `alias()`, or two simple queries.
+
 - Ride details never reach the server in plain text. Everything a patient enters goes into `rideDetailsSchema` and is encrypted in the browser (`packages/shared/src/crypto.ts`); only morning, status and the hash of the patient's link are plain columns. Don't add plain columns with personal data.
 - The team key exists once. Replacing it makes every booked ride unreadable, so the API refuses a second one. A lost passphrase can't be recovered.
-- API and web tests put a team key with the passphrase `local test passphrase` into the database when there is none. In the local dev database that is the key to unlock `/team`.
+- API and web tests run in separate temporary databases and seed their team key with `local test passphrase`; they leave the development database untouched. `bun run test` requires `CREATEDB` and drops its database after success, failure or SIGINT/SIGTERM. Direct `bun test` or `playwright test` bypasses this isolation.
 - Only addresses in `TEAM_EMAILS` see rides. Anyone else can log in but gets no access.
 - The worker (`apps/api/src/worker.ts`, service `worker` from the API image) deletes rides a week after their morning, which the booking page promises.
 - Mornings are dates in Freiburg (`today()` in `packages/shared`), not timestamps. Shift them with `addDays`, never with `Date.now()` plus or minus hours: around the clock change that lands on the wrong day.
@@ -28,6 +33,8 @@
 - Web passkeys depend on the hostname in `APP_URL`; after a domain change, users log in by mail and register a new passkey.
 
 ## Abweichungen vom Standard
+
+- No ALTCHA (starter 36e9d73) yet: its visible login widget and new HMAC key in `server_secrets` need Robin’s decision under the rollout mandate. Tracked as “Braucht Robin” in the backlog. Adopt the ALTCHA-specific zod validation from d8648c5 with it.
 
 - No PostHog (`PUBLIC_POSTHOG_KEY` stays empty): a visit to a practice's booking link must not reach a third party.
 - Screenshots show only the start page; the booking page needs a practice and the team area a login.
@@ -65,5 +72,6 @@ Stack und Aufbau: siehe README.md. Gestaltung: siehe DESIGN.md.
 - Screenshots für pleasance.org: Kernscreens als öffentliche Seiten in `PAGES` in `apps/web/screenshots.ts` eintragen, die CI fotografiert sie nach jedem Deploy (README, „Screenshots“). Seiten hinter dem Login nicht, die CI hat keinen Login und die Bilder zeigen keine echten Nutzerdaten. Der Bot committet die Bilder auf `main`, vor dem Push also holen.
 - Link-Vorschau: Das Layout setzt die `og:`-Tags, das Bild rendert `bun run og-image` in `apps/web` (DESIGN.md, „Vorschaubild“). Danach neu rendern und committen, wenn sich `APP_NAME`, `APP_BAND`, `tagline` oder die Kachel ändern. Die Kachel liegt als `static/favicon.svg`, dieselbe wie `img/werkzeuge/<slug>.svg` im pleasance-Repo. Öffentliche Seiten mit eigenem Inhalt, etwa geteilte Links, geben im Server-Load `meta` mit Titel, Beschreibung und optional einem absoluten Bild-URL zurück. Private Inhalte, Links mit Passwort, abgelaufene und ungültige Links bekommen die allgemeine Vorschau. Link-Crawler führen kein JavaScript aus, also wirkt `meta` nur in `+page.server.ts` bzw. `+page.ts` auf Seiten mit SSR, nicht unter `routes/(app)` (`ssr = false`). WhatsApp speichert Vorschauen lange zwischen.
 - Für Agenten lesbar (README, „For agents“): Jede öffentliche Seite mit eigenem Inhalt steht in `publicPages` in `apps/api/src/lib/public-pages.ts`, mit Titel, Beschreibung und ihrem Inhalt als Markdown in `body`, in der Sprache aus `m`. Daraus entstehen `/llms.txt`, `/llms-full.txt` und `<seite>.md`. Eine neue öffentliche Seite kommt im selben Zug dazu, der Browser-Test prüft, dass jede eingetragene Seite existiert. Hinein kommt nur, was jeder ohne Login sieht: nichts unter `routes/(app)`, keine Konten, keine Buchungslinks von Praxen (`/p/<praxis>`) und keine Fahrt-Links (`/b/<token>`).
+- TypeScript stays strict, including `exactOptionalPropertyTypes`; Biome forbids explicit and inferred `any`. External inputs, JSON and environment configuration are parsed with zod; model genuinely optional properties rather than casting away errors.
 - Formatierung und Lint: Biome, Regeln in `biome.json`. `bun run format` behebt das meiste selbst.
 - Apple-Zugangsdaten der Prototype Factory stehen zentral in `~/.secrets`: `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (base64), dazu das CI-Signing-Zertifikat `APPLE_CI_DEV_CERTIFICATE_BASE64` (base64-PKCS12) und `APPLE_CI_DEV_CERTIFICATE_PASSWORD`. Ablage und Kopien: `~/dev/kontor/infra.md`, Abschnitt „Zugangsdaten: wo liegt was“. Im selben Aufruf mit `set -a; . ~/.secrets; set +a` laden; Werte nie ausgeben oder ins Repo schreiben. Nach Freigabe richtet `~/dev/kontor/apple-ci-secrets.sh robinchoice/<repo>` die GitHub-CI ein: ASC-IDs als Variablen, `ASC_KEY_P8`, `IOS_DEV_CERTIFICATE` und `IOS_DEV_CERTIFICATE_PASSWORD` als Secrets.

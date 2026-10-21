@@ -18,7 +18,7 @@
     type?: 'text' | 'email' | 'tel' | 'password' | 'date' | 'time';
     placeholder?: string;
     hint?: string;
-    error?: string;
+    error?: string | undefined;
     required?: boolean;
     autocomplete?: HTMLInputAttributes['autocomplete'];
     inputmode?: HTMLInputAttributes['inputmode'];

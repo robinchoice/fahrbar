@@ -1,4 +1,6 @@
+import './env';
 import './monitoring';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { createDb, mornings, rides, schedules } from '@app/db';
 import { addDays, RIDES_KEPT_DAYS, today } from '@app/shared';
 import { and, eq, inArray, lt, lte, sql } from 'drizzle-orm';
@@ -6,8 +8,10 @@ import { captureException } from './monitoring';
 
 // Same image as the API, started with `bun apps/api/src/worker.ts`. The API runs
 // the migrations. Deletes rides a week after their morning, as the booking page promises.
-const db = createDb(process.env.DATABASE_URL!);
+const db = createDb(process.env.DATABASE_URL);
 const PURGE = 'purge-rides';
+const stop = new AbortController();
+for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => stop.abort());
 
 async function purge() {
   const cutoff = addDays(today(), -RIDES_KEPT_DAYS);
@@ -28,13 +32,10 @@ async function claim(name: string) {
 }
 
 // For the healthcheck in docker-compose.prod.yml
-Bun.serve({ port: Number(process.env.PORT || 3001), fetch: () => Response.json({ status: 'ok' }) });
+const server = Bun.serve({ port: Number(process.env.PORT || 3001), fetch: () => Response.json({ status: 'ok' }) });
 console.log('[worker] Purging old rides every hour');
 
-// A purge is one statement, a stop in between loses nothing
-for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => process.exit(0));
-
-while (true) {
+while (!stop.signal.aborted) {
   try {
     await db.insert(schedules).values({ name: PURGE }).onConflictDoNothing();
     if (await claim(PURGE)) await purge();
@@ -42,5 +43,9 @@ while (true) {
     console.error('[worker] Purge failed:', err);
     captureException(err);
   }
-  await Bun.sleep(60_000);
+  await sleep(60_000, undefined, { signal: stop.signal }).catch(() => {});
 }
+
+await server.stop();
+await db.$client.end();
+process.exit(0);

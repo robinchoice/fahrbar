@@ -2,6 +2,7 @@ name: Mobile
 
 # Every change to the app gets analyze and test. On main: iOS → TestFlight,
 # Android → signed AAB as artifact. macOS minutes are free only for public repos.
+# Main and manual builds stay internal; only pushed v* tags distribute externally.
 # Release builds are obfuscated, the symbols for `flutter symbolize` are kept as an artifact for
 # 90 days (README, "App releases"). They never go into the bundle or the repo.
 
@@ -11,6 +12,7 @@ on:
     paths: ['apps/mobile/**', '.github/workflows/mobile.yml']
   push:
     branches: [main]
+    tags: ['v*']
     paths: ['apps/mobile/**', '.github/workflows/mobile.yml']
 
 env:
@@ -27,6 +29,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tool/testflight.test.mjs
+      - name: Validate TestFlight configuration before the macOS build
+        if: github.event_name != 'pull_request' && vars.API_URL != '' && vars.ASC_KEY_ID != ''
+        env:
+          ASC_BUNDLE_ID: ${{ vars.ASC_BUNDLE_ID }}
+          TESTFLIGHT_INTERNAL_GROUP: ${{ vars.TESTFLIGHT_INTERNAL_GROUP }}
+          TESTFLIGHT_EXTERNAL_GROUP: ${{ vars.TESTFLIGHT_EXTERNAL_GROUP }}
+          RELEASE: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          : "${ASC_BUNDLE_ID:?Set ASC_BUNDLE_ID to the iOS bundle ID}"
+          : "${TESTFLIGHT_INTERNAL_GROUP:?Set TESTFLIGHT_INTERNAL_GROUP}"
+          if [ "$RELEASE" = true ]; then
+            : "${TESTFLIGHT_EXTERNAL_GROUP:?Set TESTFLIGHT_EXTERNAL_GROUP for releases}"
+          fi
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -120,6 +139,31 @@ jobs:
           path: ${{ runner.temp }}/symbols
           retention-days: 90
           if-no-files-found: error
+
+  testflight:
+    needs: ios
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Distribute the processed build to TestFlight
+        env:
+          ASC_KEY_ID: ${{ vars.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ vars.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_BUNDLE_ID: ${{ vars.ASC_BUNDLE_ID }}
+          TESTFLIGHT_INTERNAL_GROUP: ${{ vars.TESTFLIGHT_INTERNAL_GROUP }}
+          TESTFLIGHT_EXTERNAL_GROUP: ${{ vars.TESTFLIGHT_EXTERNAL_GROUP }}
+          RELEASE: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          if [ "$RELEASE" = true ]; then
+            node tool/testflight.mjs --release "$GITHUB_RUN_NUMBER"
+          else
+            node tool/testflight.mjs "$GITHUB_RUN_NUMBER"
+          fi
 
   android:
     needs: check

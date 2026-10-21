@@ -1,5 +1,8 @@
+import { z } from 'zod';
 import { page } from '$app/state';
 import { toastError } from './toast.svelte';
+
+const errorAnswer = z.object({ error: z.string(), code: z.string().exactOptional() });
 
 // The last failed calls, newest first. Feedback sends them along.
 export const recentErrors: string[] = [];
@@ -26,7 +29,7 @@ async function request<T>(method: string, path: string, body?: unknown, silent =
   const res = await fetch(`/api/v1${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? null : JSON.stringify(body),
   }).catch((err) => {
     noteError(method, path, 'offline');
     throw err;
@@ -34,7 +37,8 @@ async function request<T>(method: string, path: string, body?: unknown, silent =
 
   if (!res.ok) {
     noteError(method, path, res.status);
-    const { error, code } = await res.json().catch(() => ({ error: res.statusText }));
+    const answer = errorAnswer.safeParse(await res.json().catch(() => null));
+    const { error, code } = answer.data ?? { error: res.statusText };
     if (!silent) toastError(error);
     throw new ApiError(error, code);
   }

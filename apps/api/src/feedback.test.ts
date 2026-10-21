@@ -4,12 +4,11 @@ import { eq } from 'drizzle-orm';
 import { createApp } from './app';
 import { generateToken, hashToken } from './middleware/auth';
 
-// Runs against DATABASE_URL like auth.test.ts, with fresh accounts only
-const db = createDb(process.env.DATABASE_URL!);
+const db = createDb(process.env.DATABASE_URL);
 const app = createApp(db);
 const log = spyOn(console, 'log');
 
-beforeAll(() => migrateDb(process.env.DATABASE_URL!));
+beforeAll(() => migrateDb(process.env.DATABASE_URL));
 afterAll(() => db.$client.end());
 afterEach(() => {
   delete process.env.FEEDBACK_EMAIL;
@@ -117,7 +116,7 @@ test('short messages and other files are refused', async () => {
   const tester = await logIn();
   const short = await send(tester.token, { kind: 'bug', message: 'ab', context });
   expect(short.status).toBe(400);
-  expect(((await short.json()) as { error: string }).error).toBe('Schreib bitte mindestens 5 Zeichen.');
+  expect(await short.json()).toEqual({ error: 'Schreib bitte mindestens 5 Zeichen.' });
 
   const html = Buffer.from('<html>').toString('base64');
   const file = await send(tester.token, { kind: 'bug', message: 'Mit Anhang', screenshot: html, context });

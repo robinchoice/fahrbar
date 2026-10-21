@@ -63,13 +63,14 @@ async function proxy(request: Request, target: string) {
   // The session cookie is for the API only
   if (!target.startsWith(API_ORIGIN)) headers.delete('cookie');
 
-  const res = await fetch(target, {
+  // Streaming the body needs duplex, which TypeScript's RequestInit lacks
+  const init: RequestInit & { duplex: 'half' } = {
     method: request.method,
     headers,
-    body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
-    // @ts-expect-error — Bun supports duplex
+    body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : null,
     duplex: 'half',
-  });
+  };
+  const res = await fetch(target, init);
 
   // fetch() already decompresses the body, so forwarding the upstream's
   // content-encoding/content-length would mismatch the actual bytes sent.

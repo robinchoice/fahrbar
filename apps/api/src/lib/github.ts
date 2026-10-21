@@ -1,4 +1,7 @@
 import { APP_NAME } from '@app/shared';
+import { z } from 'zod';
+
+const issueSchema = z.object({ html_url: z.url() });
 
 // The CI bakes the repo into the image. The token is a fine-grained one that
 // may only write issues. Without it, no issue.
@@ -17,5 +20,5 @@ export async function createIssue(issue: { title: string; body: string; labels: 
     body: JSON.stringify(issue),
   });
   if (!res.ok) throw new Error(`GitHub answered ${res.status}: ${await res.text()}`);
-  return ((await res.json()) as { html_url: string }).html_url;
+  return issueSchema.parse(await res.json()).html_url;
 }
