@@ -179,6 +179,16 @@ export type Morning = {
 
 export type Ride = { id: string; status: RideStatus; payload: string; createdAt: string };
 
+export type BookedRide = {
+  status: RideStatus;
+  date: string;
+  start: string;
+  end: string;
+  practice: string;
+  address: string;
+  cancellable: boolean;
+};
+
 export const practiceSchema = z.object({
   slug: z
     .string()

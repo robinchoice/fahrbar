@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Messages, RideStatus } from '@app/shared';
+  import type { BookedRide, Messages, RideStatus } from '@app/shared';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import { api } from '$lib/api';
@@ -7,16 +7,6 @@
   import Header from '$lib/components/Header.svelte';
   import { formatDate } from '$lib/format';
   import { t } from '$lib/i18n';
-
-  type BookedRide = {
-    status: RideStatus;
-    date: string;
-    start: string;
-    end: string;
-    practice: string;
-    address: string;
-    cancellable: boolean;
-  };
 
   const STATUS: Record<RideStatus, keyof Messages> = {
     new: 'statusNew',

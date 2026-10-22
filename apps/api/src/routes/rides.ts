@@ -1,5 +1,5 @@
 import { mornings, practices, rides, teamKey } from '@app/db';
-import { bookRideSchema, type RideStatus, today } from '@app/shared';
+import { type BookedRide, bookRideSchema, type RideStatus, today } from '@app/shared';
 import { and, asc, count, eq, gt } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { t } from '../lib/i18n';
@@ -93,7 +93,7 @@ export const rideRoutes = new Hono<AppEnv>()
       .innerJoin(practices, eq(practices.id, mornings.practiceId))
       .where(eq(rides.manageTokenHash, hashToken(c.req.param('token'))));
     if (!ride) return c.json({ error: t(c).rideNotFound }, 404);
-    return c.json({ ride: { ...ride, cancellable: cancellable(ride) } });
+    return c.json({ ride: { ...ride, cancellable: cancellable(ride) } satisfies BookedRide });
   })
 
   // Cancelling deletes the ride, nothing of it stays behind

@@ -1,10 +1,6 @@
 name: Mobile
 
-# Every change to the app gets analyze and test. On main: Android → AAB artifact and internal Play test.
-# iOS → TestFlight only for release tags (v*) and manual runs: macOS minutes count tenfold.
-# Manual builds stay internal; only pushed v* tags distribute externally.
-# Release builds are obfuscated, the symbols for `flutter symbolize` are kept as an artifact for
-# 90 days (README, "App releases"). They never go into the bundle or the repo.
+# Delivery rules and debug symbols: README, "App releases".
 
 on:
   workflow_dispatch:
@@ -172,7 +168,7 @@ jobs:
     env:
       HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
       # Enable only after the first bundle was uploaded by hand in the Play Console.
-      HAS_PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' && vars.PLAY_UPLOAD == 'true' }}
+      PLAY_UPLOAD: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.PLAY_SERVICE_ACCOUNT_JSON != '' && vars.PLAY_UPLOAD == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -213,17 +209,12 @@ jobs:
           retention-days: 90
           if-no-files-found: error
 
-      - name: Read Android package name
-        if: env.HAS_KEYSTORE == 'true' && env.HAS_PLAY == 'true'
-        id: android-package
-        run: echo "name=$(sed -n 's/^[[:space:]]*applicationId = "\([^"]*\)"/\1/p' android/app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
-
       - name: Upload to Play (internal test)
-        if: env.HAS_KEYSTORE == 'true' && env.HAS_PLAY == 'true'
+        if: env.PLAY_UPLOAD == 'true'
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: ${{ steps.android-package.outputs.name }}
+          packageName: org.pleasance.fahrbar
           releaseFiles: apps/mobile/build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed

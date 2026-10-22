@@ -13,7 +13,7 @@
 
 ## Deploy
 
-- Mobile: iOS builds run only for `v*` tags and manual starts (`gh workflow run mobile.yml`); manual builds go to the internal TestFlight group; pushed `v*` tags also distribute externally and submit for beta review. Agents only create release tags when Robin explicitly asks. Configure `ASC_BUNDLE_ID` and `TESTFLIGHT_INTERNAL_GROUP` before enabling iOS builds; release tags also require `TESTFLIGHT_EXTERNAL_GROUP` (README, “App releases”). Android builds on `main`, release tags and manual starts produce an AAB and upload to the internal Play test only with an upload keystore, `PLAY_SERVICE_ACCOUNT_JSON` and `PLAY_UPLOAD=true`. Enable that variable only after the first manual Play Console upload.
+- Mobile: iOS builds run only for `v*` tags and manual starts. Agents only create release tags when Robin explicitly asks. Configuration, TestFlight and Play uploads: README, “App releases”.
 
 - A push to `main` builds the images after green CI and deploys them through the Coolify API (README of the starter, „Deploy auf Coolify“).
 - Check: `gh run watch`. The deploy job is green once `https://fahrbar.pleasance.org/api/health` reports the commit as `revision`.
