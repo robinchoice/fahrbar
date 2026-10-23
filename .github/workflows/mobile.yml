@@ -24,8 +24,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: node --test tool/testflight.test.mjs
@@ -58,7 +58,7 @@ jobs:
     if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && vars.API_URL != '' && vars.ASC_KEY_ID != ''
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Neuestes Xcode wählen
         run: |
@@ -129,7 +129,7 @@ jobs:
             -authenticationKeyID ${{ vars.ASC_KEY_ID }} \
             -authenticationKeyIssuerID ${{ vars.ASC_ISSUER_ID }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: symbols-ios
           path: ${{ runner.temp }}/symbols
@@ -141,8 +141,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Distribute the processed build to TestFlight
@@ -170,8 +170,8 @@ jobs:
       # Enable only after the first bundle was uploaded by hand in the Play Console.
       PLAY_UPLOAD: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.PLAY_SERVICE_ACCOUNT_JSON != '' && vars.PLAY_UPLOAD == 'true' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
@@ -197,12 +197,12 @@ jobs:
       - name: App Bundle bauen
         run: flutter build appbundle --release --obfuscate --split-debug-info=$RUNNER_TEMP/symbols --dart-define=API_URL=$API_URL --dart-define=SENTRY_DSN=$SENTRY_DSN --build-number=$GITHUB_RUN_NUMBER --dart-define=APP_VERSION=$GITHUB_SHA
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android-aab
           path: apps/mobile/build/app/outputs/bundle/release/app-release.aab
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: symbols-android
           path: ${{ runner.temp }}/symbols
