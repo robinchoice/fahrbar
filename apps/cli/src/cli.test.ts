@@ -261,6 +261,31 @@ test('the token only goes to the address it was issued for', async () => {
   }
 });
 
+test('switching API addresses revokes the previous token only at its issuer', async () => {
+  const seen: (string | null)[] = [];
+  const app = createApp(db);
+  const other = Bun.serve({
+    port: 0,
+    fetch: (req) => {
+      seen.push(req.headers.get('authorization'));
+      return app.fetch(req);
+    },
+  });
+  try {
+    const { cli, token } = await device();
+    const email = freshEmail();
+    expect((await cli(['login'], { email })).code).toBe(0);
+    const oldToken = await token();
+    expect((await cli(['login', '--url', other.url.origin], { email })).code).toBe(0);
+    expect(seen.every((authorization) => authorization === null)).toBe(true);
+    expect(await sessionCount(oldToken)).toBe(0);
+    expect(await sessionCount(await token())).toBe(1);
+    expect((await cli(['whoami', '--json'], { raw: true })).json()).toMatchObject({ user: { email } });
+  } finally {
+    await other.stop(true);
+  }
+});
+
 test('help, wrong usage and an unreachable app', async () => {
   const { cli } = await device();
   const helpText = await cli([]);
@@ -290,7 +315,11 @@ test('an unwritable config folder ends with an error, not a crash', async () => 
   const blocked = join(await mkdtemp(join(tmpdir(), 'cli-')), 'file');
   await Bun.write(blocked, '');
   const { cli } = await device({ LANG: 'de_DE.UTF-8', XDG_CONFIG_HOME: blocked });
-  const login = await cli(['login', '--json'], { email: freshEmail() });
+  const email = freshEmail();
+  const login = await cli(['login', '--json'], { email });
+  expect(
+    await db.$client`select s.id from sessions s join users u on s.user_id = u.id where u.email = ${email}`,
+  ).toHaveLength(0);
   expect(login.code).toBe(1);
   expect(login.json()).toEqual({ error: expect.any(String) });
 });
@@ -303,4 +332,23 @@ test('the entry point passes the exit code to the shell', async () => {
   expect(await whoami.exited).toBe(3);
   expect(JSON.parse(await new Response(whoami.stdout).text())).toEqual({ error: messages.en.notLoggedIn });
   expect(await Bun.spawn(['bun', main, '--help'], { env, stdout: 'ignore' }).exited).toBe(0);
+});
+
+test('the entry point redeems a login link piped through stdin', async () => {
+  const email = freshEmail();
+  const { cli, env: deviceEnv } = await device();
+  const link = `${url}/auth/verify?token=${await issueMagicLink(email)}`;
+  const child = Bun.spawn(['bun', join(import.meta.dir, 'main.ts'), 'login', '--link', '-', '--json', '--url', url], {
+    env: { ...process.env, ...deviceEnv },
+    stdin: 'pipe',
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  child.stdin.write(`${link}\n`);
+  child.stdin.end();
+  expect(await child.exited).toBe(0);
+  const output = await new Response(child.stdout).text();
+  expect(JSON.parse(output)).toMatchObject({ user: { email } });
+  expect(output).not.toContain('token');
+  expect((await cli(['whoami', '--json'])).json()).toMatchObject({ user: { email } });
 });

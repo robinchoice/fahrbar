@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { createClient } from '../client';
 import { type Command, type Context, EXIT, Failure, str } from '../command';
-import { removeSession, saveSession } from '../config';
+import { loadSession, removeSession, saveSession } from '../config';
 
 export const userSchema = z.object({
   id: z.string(),
@@ -45,13 +46,19 @@ export const auth: Record<string, Command> = {
     options: { email: { type: 'string' }, link: { type: 'string' } },
     async run(ctx) {
       // A new login replaces the token of this device: the old one is revoked first, so none stays valid unseen
-      if (ctx.session) {
-        await ctx.api.post('/auth/logout', okSchema);
+      const stored = await loadSession(ctx.io.env);
+      if (stored) {
+        await createClient(stored.url, stored.token, ctx.locale, ctx.m).post('/auth/logout', okSchema);
         await removeSession(ctx.io.env);
       }
       const link = str(ctx.values.link);
       const { user, token } = link === undefined ? await withCode(ctx) : await withLink(ctx, link);
-      await saveSession(ctx.io.env, { url: ctx.url, token });
+      try {
+        await saveSession(ctx.io.env, { url: ctx.url, token });
+      } catch (error) {
+        await createClient(ctx.url, token, ctx.locale, ctx.m).post('/auth/logout', okSchema);
+        throw error;
+      }
       return { data: { user }, text: ctx.m.cliLoggedIn(user.email) };
     },
   },
