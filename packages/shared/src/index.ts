@@ -34,6 +34,7 @@ export const magicLinkSchema = z.object({
 
 export const verifySchema = z.object({
   token: z.string().min(1).max(200),
+  cookie: z.boolean().optional(),
 });
 
 export const loginCodeSchema = z.object({ email });

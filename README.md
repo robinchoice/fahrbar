@@ -65,10 +65,32 @@ bun run dev
 
 Web runs on http://localhost:5173, the API on port 3000. Without `SMTP_HOST` the login links appear in the API log. Log in at `/login`, set the team passphrase at `/team`, add a practice and a morning, then book through the practice link.
 
-Checks: `bun run check && bun run test`, for the app `flutter analyze && flutter test` in `apps/mobile`.
+Checks: `bun run check && bun run test`; for CLI changes also `bun run build` in `apps/cli`, for the app `flutter analyze && flutter test` in `apps/mobile`.
 The browser tests (Playwright) build the web app and start API and web build themselves on their own ports 31100 and 31101, never against running dev servers, so the CSP applies as in production. Test ports stay below Linux’s ephemeral range (32768–60999). Two worktrees testing at the same time pick other ports below 32768 via `TEST_API_PORT` and `TEST_WEB_PORT`, e.g. 31102 and 31103.
 
-`bun run test` gives the API and browser suites separate empty databases on the server from `DATABASE_URL`. The user needs `CREATEDB` (local Compose and CI users already have it). After success, failure or SIGINT/SIGTERM only that temporary database is dropped; the development database stays untouched. Running the package scripts in `apps/api` or `apps/web` also isolates the database; direct `bun test` or `playwright test` bypasses it.
+`bun run test` gives the API, CLI and browser suites separate empty databases on the server from `DATABASE_URL`. The user needs `CREATEDB` (local Compose and CI users already have it). After success, failure or SIGINT/SIGTERM only that temporary database is dropped; the development database stays untouched. Running the package scripts in `apps/api`, `apps/cli` or `apps/web` also isolates the database; direct `bun test` or `playwright test` bypasses it.
+
+### CLI
+
+`apps/cli` is fahrbar's command line over the same HTTP API as web and app. The API enforces permissions, rate limits and closed sign-up, including first login for addresses in `TEAM_EMAILS`. There is no direct database access. Arguments use `node:util`'s `parseArgs`, without a parser dependency.
+
+```sh
+(cd apps/cli && bun run build)
+apps/cli/build/fahrbar --help
+apps/cli/build/fahrbar login                 # email, then the mailed code
+apps/cli/build/fahrbar whoami --json
+apps/cli/build/fahrbar rides                 # team mornings, IDs and booking counts
+apps/cli/build/fahrbar rides --morning <id> --json
+apps/cli/build/fahrbar settings --name Ada
+apps/cli/build/fahrbar logout
+```
+
+- Build: `bun run build` in `apps/cli` compiles one executable, `apps/cli/build/fahrbar`, with Bun included. Root `bun run build` builds both web and CLI. `APP_URL` at build time sets its default address (CI uses the live URL), otherwise `https://fahrbar.pleasance.org`. `--url` selects another address, such as `http://localhost:5173`; later calls use the address of the last login. Without compiling: `bun apps/cli/src/main.ts <command>`. Cross-compile with `bun run build --target=bun-darwin-arm64` in `apps/cli` (also `bun-linux-x64`, `bun-linux-arm64`, `bun-windows-x64`). CI compiles for validation only and publishes no release artifacts.
+- Login: `fahrbar login [--email <email>]` asks for the mailed code, without ALTCHA as in the web app. `login --link <link>` redeems a login link; `--link -` reads it from stdin. The device's bearer token is a normal session, hashed on the server, valid for 365 days and renewed during use. It is stored with mode `0600` alongside its API address in `$XDG_CONFIG_HOME/fahrbar/session.json`, otherwise `~/.config/fahrbar/session.json` on Linux, `~/Library/Application Support/fahrbar/session.json` on macOS or `%APPDATA%/fahrbar/session.json` on Windows. The token is sent only to that address. `whoami` shows the account; `logout` revokes this session and removes the file; logging in again at the same address revokes its previous token.
+- Rides: only `TEAM_EMAILS` can list mornings and their rides. `rides` shows mornings with booking counts; `rides --morning <UUID>` shows ride IDs, statuses and booking times. Both text and JSON contain metadata only: patient details stay encrypted, the CLI does not request a team passphrase or print the encrypted payload. Booking, cancellation, status changes, practice/morning management and decryption are deferred.
+- Output: text by default, `--json` writes exactly one JSON value to stdout, including errors as `{ "error": "…" }` and help as structured command information. Prompts go to stderr. Exit codes: 0 success, 1 error (including API refusal), 2 wrong usage, 3 not logged in. DE/EN messages come from shared `cli…` texts; language follows `LANG` (or `LC_ALL`/`LC_MESSAGES`) and `--lang de|en`, including API errors via `Accept-Language`.
+- Extend: add a command under `apps/cli/src/commands` and register it in `src/cli.ts`, following `rides.ts` or `settings.ts`. Define help, options and `run`, call `ctx.api`, validate responses with zod and return `{ data, text }`. Add a test in `src/cli.test.ts`; `bun run test` runs it against the real API in an isolated database.
+- Agents: log in only as admin@pleasance.org, never with customer accounts. Pipe the login link from the Kontor directly into the CLI so it stays out of the agent context: `login-link fahrbar | apps/cli/build/fahrbar login --link -`. This test account has no admin rights and does not gain team access through the CLI.
 
 ### Login in the Savor preview
 

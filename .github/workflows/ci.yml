@@ -44,6 +44,9 @@ jobs:
       - run: bun run check
       # Builds the web app and tests the build
       - run: bun run test
+      # Compile the CLI for validation only; no release artifact
+      - run: bun run build
+        working-directory: apps/cli
 
   # Images are built here, not on VPS 1: building there ran it out of memory.
   build-and-push:

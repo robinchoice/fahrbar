@@ -9,7 +9,7 @@
 
 ## Checks
 
-`bun run check && bun run test` (`test` builds the web app and tests the build), for app changes also `flutter analyze && flutter test && node --test tool/testflight.test.mjs` in `apps/mobile`. The browser tests start API and web on their own ports (31100, 31101). Ports stay below the Linux ephemeral range (32768–60999). If another worktree tests at the same time, use other ports below 32768: `TEST_API_PORT=31102 TEST_WEB_PORT=31103 bun run test`.
+`bun run check && bun run test` (`test` builds the web app and tests the build, and tests the CLI against the API); for CLI changes also `bun run build` in `apps/cli`; for app changes also `flutter analyze && flutter test && node --test tool/testflight.test.mjs` in `apps/mobile`. The browser tests start API and web on their own ports (31100, 31101). Ports stay below the Linux ephemeral range (32768–60999). If another worktree tests at the same time, use other ports below 32768: `TEST_API_PORT=31102 TEST_WEB_PORT=31103 bun run test`.
 
 ## Deploy
 
@@ -49,8 +49,9 @@
 Stack und Aufbau: siehe README.md. Gestaltung: siehe DESIGN.md.
 
 - Neue Tabelle: `packages/db/src/schema.ts` ändern, `bun run db:generate`. Die Migration läuft beim nächsten API-Start, `migrateDb` lässt mehrere Instanzen nacheinander migrieren. Jede Migration muss mit dem noch laufenden alten Code funktionieren: Spalten nullable oder mit Default hinzufügen, Umbenennen und Löschen erst im Deploy danach. Nichts von Hand in der Datenbank ändern.
+- CLI (README, “CLI”): Every core feature gets a command in `apps/cli/src/commands`, registered in `src/cli.ts`, with text, `--json` and a test in `cli.test.ts`. Follow `rides.ts` or `settings.ts`. Only use the HTTP API, never the database: permissions, rate limits and closed sign-up apply. Agents log in only as admin@pleasance.org (`login-link fahrbar | apps/cli/build/fahrbar login --link -`), never as customers. Ride commands currently report metadata only; patient details stay encrypted.
 - Neue Route: Datei in `apps/api/src/routes`, in `app.ts` einhängen. `requireAuth` für eingeloggte Nutzer (danach `c.get('user')`), `validJson(schema)` mit dem Schema aus `packages/shared`.
-- Jeder sichtbare Text steht auf Deutsch und Englisch: für Web und API in `packages/shared/src/messages.ts`, für die App in `lib/core/messages.dart`. Fehlt eine Sprache, schlagen `bun run check` bzw. `flutter analyze` fehl. Im Web `t()` aus `$lib/i18n`, in der API `t(c)` aus `lib/i18n.ts`, in der App `ref.watch(messagesProvider)`. Eigene zod-Meldungen sind Schlüssel aus `messages.ts`. Umgeschaltet wird im `PleasanceFooter`.
+- Jeder sichtbare Text steht auf Deutsch und Englisch: für Web, API und CLI in `packages/shared/src/messages.ts`, für die App in `lib/core/messages.dart`. Fehlt eine Sprache, schlagen `bun run check` bzw. `flutter analyze` fehl. Im Web `t()` aus `$lib/i18n`, in der API `t(c)` aus `lib/i18n.ts`, in der App `ref.watch(messagesProvider)`. Eigene zod-Meldungen sind Schlüssel aus `messages.ts`. Umgeschaltet wird im `PleasanceFooter`.
 - Fehler antworten immer als `{ error: string }` mit einem Text aus `t(c)`, also in der Sprache, die der Client per `Accept-Language` schickt. Das Web zeigt ihn als Toast.
 - Alles, was Mails verschickt oder Geheimnisse prüft, bekommt ein `rateLimit` aus `lib/rate-limit.ts`. Die Zähler liegen in Postgres und gelten für alle API-Instanzen.
 - Mails über `sendMail` aus `lib/mail.ts`.

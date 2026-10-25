@@ -220,6 +220,33 @@ const de = {
   agentsPages: 'Seiten',
   // Label of the language button, in the language it switches to
   otherLanguage: 'English',
+
+  // CLI, see apps/cli
+  cliIntro: (app: string) => `${app} auf der Befehlszeile`,
+  cliUsage: (cmd: string) => `Aufruf: ${cmd} <Befehl> [Optionen]`,
+  cliCommands: 'Befehle',
+  cliOptions: 'Optionen',
+  cliJsonHelp: 'Ausgabe als JSON, für Agenten und Skripte',
+  cliUrlHelp: (url: string) => `Adresse der App, Standard ${url}. Der Login merkt sie sich.`,
+  cliLangHelp: 'Sprache, sonst aus LANG',
+  cliHelpHelp: 'Diese Hilfe',
+  cliExitCodes: 'Exit-Codes: 0 erledigt, 1 Fehler, 2 falscher Aufruf, 3 nicht angemeldet',
+  cliLoginHelp: 'Anmelden mit dem Code aus der Login-Mail',
+  cliLinkHelp: 'Anmelden mit einem Login-Link, „-“ liest ihn von stdin',
+  cliWhoamiHelp: 'Zeigt das angemeldete Konto',
+  cliLogoutHelp: 'Meldet dieses Gerät ab und widerruft seinen Token',
+  cliRidesHelp: 'Zeigt Team-Vormittage mit Buchungszahlen oder Fahrtmetadaten eines Vormittags',
+  cliDisplayName: 'Anzeigename',
+  cliSettingsHelp: 'Zeigt die Einstellungen und ändert den Anzeigenamen',
+  cliAskEmail: 'E-Mail: ',
+  cliAskCode: 'Code aus der Mail: ',
+  cliCodeSent: (email: string) => `Login-Code an ${email} geschickt.`,
+  cliLoggedIn: (email: string) => `Angemeldet als ${email}`,
+  cliLoggedOut: 'Abgemeldet, der Token dieses Geräts ist widerrufen.',
+  cliUnknownCommand: (name: string, cmd: string) => `Unbekannter Befehl „${name}“. Alle Befehle: ${cmd} --help`,
+  cliBadOptions: (detail: string, cmd: string) => `Falscher Aufruf: ${detail}. Hilfe: ${cmd} --help`,
+  cliUnreachable: (url: string) => `${url} ist nicht erreichbar.`,
+  cliBadAnswer: 'Unerwartete Antwort der API.',
 };
 
 export type Messages = typeof de;
@@ -430,6 +457,33 @@ const en: Messages = {
     `Public content only. Every page is also available as Markdown: append \`.md\` to its URL, \`/index.md\` for the start page. Everything in one file: ${full}`,
   agentsPages: 'Pages',
   otherLanguage: 'Deutsch',
+
+  // CLI, see apps/cli
+  cliIntro: (app) => `${app} on the command line`,
+  cliUsage: (cmd) => `Usage: ${cmd} <command> [options]`,
+  cliCommands: 'Commands',
+  cliOptions: 'Options',
+  cliJsonHelp: 'Output as JSON, for agents and scripts',
+  cliUrlHelp: (url) => `Address of the app, default ${url}. Login remembers it.`,
+  cliLangHelp: 'Language, else from LANG',
+  cliHelpHelp: 'This help',
+  cliExitCodes: 'Exit codes: 0 done, 1 error, 2 wrong usage, 3 not logged in',
+  cliLoginHelp: 'Log in with the code from the login email',
+  cliLinkHelp: 'Log in with a login link, "-" reads it from stdin',
+  cliWhoamiHelp: 'Shows the logged-in account',
+  cliLogoutHelp: 'Logs this device out and revokes its token',
+  cliRidesHelp: 'Shows team mornings with booking counts or ride metadata for one morning',
+  cliDisplayName: 'Display name',
+  cliSettingsHelp: 'Shows settings and changes the display name',
+  cliAskEmail: 'Email: ',
+  cliAskCode: 'Code from the email: ',
+  cliCodeSent: (email) => `Login code sent to ${email}.`,
+  cliLoggedIn: (email) => `Logged in as ${email}`,
+  cliLoggedOut: "Logged out, this device's token is revoked.",
+  cliUnknownCommand: (name, cmd) => `Unknown command "${name}". All commands: ${cmd} --help`,
+  cliBadOptions: (detail, cmd) => `Wrong usage: ${detail}. Help: ${cmd} --help`,
+  cliUnreachable: (url) => `${url} cannot be reached.`,
+  cliBadAnswer: 'Unexpected answer from the API.',
 };
 
 export const messages = { de, en };

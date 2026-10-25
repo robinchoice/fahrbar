@@ -21,10 +21,20 @@
         "drizzle-orm": "^0.45.3",
         "hono": "^4.13.12",
         "nodemailer": "^10.0.13",
-        "zod": "^4.6.5",
+        "zod": "^4.6.6",
       },
       "devDependencies": {
         "@types/nodemailer": "^8.0.2",
+      },
+    },
+    "apps/cli": {
+      "name": "@app/cli",
+      "dependencies": {
+        "@app/shared": "workspace:*",
+        "zod": "^4.6.6",
+      },
+      "devDependencies": {
+        "@app/db": "workspace:*",
       },
     },
     "apps/web": {
@@ -44,7 +54,7 @@
         "svelte": "^5.57.1",
         "svelte-check": "^4.7.6",
         "vite": "^7.3.6",
-        "zod": "^4.6.5",
+        "zod": "^4.6.6",
       },
     },
     "packages/db": {
@@ -61,7 +71,7 @@
     "packages/shared": {
       "name": "@app/shared",
       "dependencies": {
-        "zod": "^4.6.5",
+        "zod": "^4.6.6",
       },
     },
   },
@@ -75,6 +85,8 @@
   },
   "packages": {
     "@app/api": ["@app/api@workspace:apps/api"],
+
+    "@app/cli": ["@app/cli@workspace:apps/cli"],
 
     "@app/db": ["@app/db@workspace:packages/db"],
 

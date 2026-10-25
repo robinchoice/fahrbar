@@ -130,7 +130,7 @@ export const authRoutes = new Hono<AppEnv>()
       .returning({ email: magicLinks.email });
     if (!link) return c.json({ error: t(c).linkExpired }, 400);
 
-    return respondWithSession(c, link.email, true);
+    return respondWithSession(c, link.email, c.req.valid('json').cookie !== false);
   })
 
   // Mobile apps: a 6-digit code by mail instead of a link
