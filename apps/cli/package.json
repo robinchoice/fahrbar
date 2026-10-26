@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@app/shared": "workspace:*",
+    "altcha-lib": "^2.7.0",
     "zod": "^4.6.6"
   },
   "devDependencies": {

@@ -9,6 +9,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { auth, checkAuth, passkeyLogin, sendMagicLink, verifyCode } from '$lib/auth.svelte';
+  import Altcha from '$lib/components/Altcha.svelte';
   import Button from '$lib/components/Button.svelte';
   import Input from '$lib/components/Input.svelte';
   import { t } from '$lib/i18n';
@@ -18,6 +19,8 @@
 
   let email = $state('');
   let code = $state('');
+  let altcha = $state('');
+  let altchaWidget = $state<Altcha>();
   let sent = $state(false);
   let loading = $state(false);
   let passkeys = $state(false);
@@ -84,13 +87,17 @@
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
+    if (!altcha) return;
     loading = true;
     try {
-      await sendMagicLink(email, next);
+      await sendMagicLink(email, next, altcha);
       sent = true;
       code = '';
+      // Used up: another address gets a new widget that solves again
+      altcha = '';
     } catch {
       // The API client already shows the error as a toast
+      altchaWidget?.reset();
     } finally {
       loading = false;
     }
@@ -138,6 +145,7 @@
         bind:value={email}
         required
       />
+      <Altcha bind:payload={altcha} bind:this={altchaWidget} />
       <Button type="submit" {loading}>{t().sendLink}</Button>
     </form>
     {#if passkeys}

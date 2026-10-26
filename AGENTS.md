@@ -34,8 +34,7 @@
 
 ## Abweichungen vom Standard
 
-- No ALTCHA (starter 36e9d73) yet: its visible login widget and new HMAC key in `server_secrets` need Robin’s decision under the rollout mandate. Tracked as “Braucht Robin” in the backlog. Adopt the ALTCHA-specific zod validation from d8648c5 with it.
-
+- ALTCHA only before login mails: the booking page `/p/<practice>` creates rides without it, limited per IP. A visible bot check for patients needs Robin's decision.
 - No PostHog (`PUBLIC_POSTHOG_KEY` stays empty): a visit to a practice's booking link must not reach a third party.
 - Screenshots show only the start page; the booking page needs a practice and the team area a login.
 - No Bitcoin/Lightning: the pilot is paid in cash by decision (ADR 003), there is no payment integration.
@@ -54,6 +53,7 @@ Stack und Aufbau: siehe README.md. Gestaltung: siehe DESIGN.md.
 - Jeder sichtbare Text steht auf Deutsch und Englisch: für Web, API und CLI in `packages/shared/src/messages.ts`, für die App in `lib/core/messages.dart`. Fehlt eine Sprache, schlagen `bun run check` bzw. `flutter analyze` fehl. Im Web `t()` aus `$lib/i18n`, in der API `t(c)` aus `lib/i18n.ts`, in der App `ref.watch(messagesProvider)`. Eigene zod-Meldungen sind Schlüssel aus `messages.ts`. Umgeschaltet wird im `PleasanceFooter`.
 - Fehler antworten immer als `{ error: string }` mit einem Text aus `t(c)`, also in der Sprache, die der Client per `Accept-Language` schickt. Das Web zeigt ihn als Toast.
 - Alles, was Mails verschickt oder Geheimnisse prüft, bekommt ein `rateLimit` aus `lib/rate-limit.ts`. Die Zähler liegen in Postgres und gelten für alle API-Instanzen.
+- Login-Mails prüfen ALTCHA (README, „Login and passkeys“): `requireAltcha` vor `validJson`, im Web `Altcha.svelte` im Formular, in App und CLI wie `requestCode` bzw. `withCode`. Nicht für Links aus Mails wie den Login-Link, die tragen schon ein Geheimnis.
 - Mails über `sendMail` aus `lib/mail.ts`.
 - Registrierung geschlossen bis zu Robins Go: Neue Konten nur für Adressen in `SIGNUP_ALLOWLIST` und `TEAM_EMAILS`, bestehende melden sich immer an. `SIGNUP_OPEN=true` erst nach Robins ausdrücklichem Go setzen (README, „Opening sign-up“). Tester lädt ein Admin aus `ADMIN_EMAILS` in der App ein (`/auth/invite`, Seite `/invite`), das öffnet nichts. Dort steht robin@pleasance.org, der menschliche Admin. admin@pleasance.org, der agentische Admin für die Savor-Vorschau, kommt nie in `ADMIN_EMAILS`, sonst legen Agenten Konten an und mailen Dritte. Wer einen weiteren Weg baut, auf dem Konten entstehen, prüft dort ebenfalls `mayLogIn` aus `lib/signup.ts`. Die Buchungsseite `/p/<practice>` braucht keinen Login und bleibt davon unberührt.
 - Zustandslos, damit eine App ohne Umbau auf einen anderen Server umzieht oder repliziert hinter einem Load Balancer läuft (`infra.md`, „Skalierung“): Platte und Prozessspeicher halten keinen Zustand, der eine Instanz überlebt oder für alle gelten muss. Sessions, Rate-Limits und Feedback liegen schon in Postgres. Uploads und Medien gehen nach S3 (Hetzner Object Storage, Bucket nach Namensregel) über `Bun.s3`, das `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ENDPOINT` und `S3_BUCKET` selbst aus der Env liest. Kein Volume außer `pgdata`. Locks per `pg_advisory_xact_lock`. Caches im Speicher nur, wenn jede Instanz sie verlieren darf, ein geteilter Cache läuft als Valkey-Container in `docker-compose.prod.yml`.

@@ -1,3 +1,6 @@
+import { altchaChallengeSchema } from '@app/shared';
+import { solveChallenge } from 'altcha-lib';
+import { deriveKey } from 'altcha-lib/algorithms/pbkdf2';
 import { z } from 'zod';
 import { createClient } from '../client';
 import { type Command, type Context, EXIT, Failure, str } from '../command';
@@ -20,10 +23,13 @@ export async function currentUser({ api, session, m }: Context) {
   return user;
 }
 
-// Like the app: a code by mail. The API enforces the closed sign-up.
+// Like the app: a code by mail, after the same ALTCHA as the login form. The
+// API decides whether the address may log in, so the closed sign-up holds.
 async function withCode({ api, values, io, m }: Context) {
   const email = str(values.email) ?? (await io.ask(m.cliAskEmail)).trim();
-  await api.post('/auth/code', okSchema, { email });
+  const challenge = await api.get('/altcha', altchaChallengeSchema);
+  const solution = await solveChallenge({ challenge, deriveKey });
+  await api.post('/auth/code', okSchema, { email, altcha: btoa(JSON.stringify({ challenge, solution })) });
   io.err(m.cliCodeSent(email));
   const code = (await io.ask(m.cliAskCode)).trim();
   return api.post('/auth/code/verify', loginSchema, { email, code });
