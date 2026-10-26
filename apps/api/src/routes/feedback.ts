@@ -7,7 +7,7 @@ import { t } from '../lib/i18n';
 import { sendMail } from '../lib/mail';
 import { rateLimit, tooManyRequests } from '../lib/rate-limit';
 import { validJson } from '../lib/validate';
-import { requireAuth } from '../middleware/auth';
+import { requireAdmin, requireAuth } from '../middleware/auth';
 import { captureException } from '../monitoring';
 import type { AppEnv } from '../types';
 
@@ -27,7 +27,6 @@ type Report = {
   kind: 'bug' | 'idea';
   message: string;
   context: FeedbackContext & { api: string };
-  screenshotUrl: string | null;
 };
 
 const firstLine = (message: string) => {
@@ -63,7 +62,6 @@ function issue(report: Report) {
         .split('\n')
         .map((line) => `> ${line}`)
         .join('\n'),
-      report.screenshotUrl && `![Screenshot](${report.screenshotUrl})`,
       `| | |\n|---|---|\n${details(report)
         .map(([key, value]) => `| ${key} | \`${cell(value!)}\` |`)
         .join('\n')}`,
@@ -117,7 +115,6 @@ export const feedbackRoutes = new Hono<AppEnv>()
       kind,
       message,
       context: fullContext,
-      screenshotUrl: screenshot && `${process.env.APP_URL}/api/v1/feedback/${row!.id}/screenshot`,
     };
 
     let issueUrl: string | null = null;
@@ -138,9 +135,7 @@ export const feedbackRoutes = new Hono<AppEnv>()
     return c.json({ ok: true });
   })
 
-  // Linked from issue and mail, where GitHub's image proxy fetches it without
-  // a session. The random id is the key.
-  .get('/:id/screenshot', async (c) => {
+  .get('/:id/screenshot', requireAuth, requireAdmin, async (c) => {
     const id = c.req.param('id');
     const [row] = UUID.test(id)
       ? await c.get('db').select({ screenshot: feedback.screenshot }).from(feedback).where(eq(feedback.id, id))
@@ -148,6 +143,6 @@ export const feedbackRoutes = new Hono<AppEnv>()
     if (!row?.screenshot) return c.json({ error: t(c).notFound }, 404);
     return c.body(new Uint8Array(row.screenshot), 200, {
       'content-type': imageType(row.screenshot)!,
-      'cache-control': 'private, max-age=31536000, immutable',
+      'cache-control': 'no-store',
     });
   });

@@ -14,6 +14,7 @@ afterEach(() => {
   delete process.env.FEEDBACK_EMAIL;
   delete process.env.FEEDBACK_GITHUB_TOKEN;
   delete process.env.GITHUB_REPOSITORY;
+  delete process.env.ADMIN_EMAILS;
 });
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]).toString('base64');
@@ -79,14 +80,24 @@ test('a bug report is stored, mailed with reply-to the tester and filed as an is
   expect(issue.title).toBe('Feedback: Export geht nicht');
   expect(issue.labels).toEqual(['feedback', 'bug', 'web']);
   expect(issue.body).toContain('> Es kommt nur ein Fehler.');
-  expect(issue.body).toContain(`/api/v1/feedback/${row!.id}/screenshot)`);
+  expect(issue.body).toContain(row!.id);
+  expect(issue.body).not.toContain('/screenshot');
+  expect(issue.body).not.toContain(PNG);
   expect(issue.body).not.toContain(tester.email);
 
   expect(lastMail()).toStartWith('[mail] To robin@example.com: Bug from Lena: Export geht nicht');
   expect(lastMail()).toContain('Issue: https://github.com/robinchoice/starter/issues/7');
 
-  const shot = await app.request(`/api/v1/feedback/${row!.id}/screenshot`);
+  const screenshotUrl = `/api/v1/feedback/${row!.id}/screenshot`;
+  expect((await app.request(screenshotUrl)).status).toBe(401);
+  expect((await app.request(screenshotUrl, { headers: { authorization: `Bearer ${tester.token}` } })).status).toBe(403);
+
+  const admin = await logIn();
+  process.env.ADMIN_EMAILS = admin.email;
+  const shot = await app.request(screenshotUrl, { headers: { authorization: `Bearer ${admin.token}` } });
+  expect(shot.status).toBe(200);
   expect(shot.headers.get('content-type')).toBe('image/png');
+  expect(shot.headers.get('cache-control')).toBe('no-store');
   expect(Buffer.from(await shot.arrayBuffer()).toString('base64')).toBe(PNG);
 });
 
@@ -124,6 +135,9 @@ test('short messages and other files are refused', async () => {
 });
 
 test('unknown screenshots are not found', async () => {
-  expect((await app.request(`/api/v1/feedback/${crypto.randomUUID()}/screenshot`)).status).toBe(404);
-  expect((await app.request('/api/v1/feedback/nope/screenshot')).status).toBe(404);
+  const admin = await logIn();
+  process.env.ADMIN_EMAILS = admin.email;
+  const headers = { authorization: `Bearer ${admin.token}` };
+  expect((await app.request(`/api/v1/feedback/${crypto.randomUUID()}/screenshot`, { headers })).status).toBe(404);
+  expect((await app.request('/api/v1/feedback/nope/screenshot', { headers })).status).toBe(404);
 });

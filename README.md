@@ -122,6 +122,14 @@ fahrbar is reachable from outside but closed until Robin explicitly gives the go
 - Opening, only after Robin's go: set `SIGNUP_OPEN=true` in Coolify and redeploy. Check: request a login link for a new address.
 - `login-link` creates accounts itself, the preview's test account needs no entry. The script takes any address, the limit sits on the server: agents don't get into the container, only through the root-owned `login-link` from the kontor, which always passes admin@pleasance.org. Whoever gets into the container has the database anyway.
 
+### Feedback
+
+The feedback button sends a bug report or idea with page, version, device, viewport, language and recent errors. An optional screenshot is stored with the report in Postgres. The API creates a public GitHub issue without the tester's email address and mails `FEEDBACK_EMAIL` with the screenshot attached and a link to the issue. If GitHub or mail fails, the report remains stored.
+
+- Screenshots stay out of public issues. `/api/v1/feedback/<id>/screenshot` serves them only to logged-in admins from `ADMIN_EMAILS`, with `Cache-Control: no-store`.
+- Without `FEEDBACK_GITHUB_TOKEN` no issue is created; without `FEEDBACK_EMAIL` no mail is sent. CI embeds the repo as `GITHUB_REPOSITORY` in the API image.
+- Open reports: `gh issue list --label feedback`.
+
 ### For agents
 
 Other people's agents read the public content without HTML, following [llms.txt](https://llmstxt.org). The source is `publicPages` in `apps/api/src/lib/public-pages.ts`, the routes are in `apps/api/src/routes/agents.ts`. The web server forwards these paths to the API.
@@ -143,7 +151,7 @@ The repo is public: code, history and CI logs. `.github/workflows/secrets.yml` r
 
 ### App releases
 
-The mobile workflow checks `flutter analyze`, `flutter test` and `node --test tool/testflight.test.mjs` in `apps/mobile`. iOS builds run only for `v*` tags and manual starts (`gh workflow run mobile.yml`) to limit macOS minutes. Manual builds distribute internally; only pushed `v*` release tags distribute to external testers and submit for beta review. Agents create release tags only when Robin explicitly asks, because external distribution notifies testers.
+The mobile workflow checks `flutter analyze`, `flutter test` and `node --test tool/testflight.test.mjs` in `apps/mobile`. iOS builds run only for `v*` tags and manual starts (`gh workflow run mobile.yml`) to limit macOS minutes. Manual builds distribute internally; only pushed `v*` release tags distribute to external testers and submit for beta review. Agents create release tags only after Robin says yes, because external distribution notifies testers. After app changes that users notice, agents ask about external distribution in the conclusion (skill `push-deploy`).
 
 Android builds on `main`, release tags and manual starts produce an AAB artifact. With an upload keystore, the GitHub secret `PLAY_SERVICE_ACCOUNT_JSON` and repo variable `PLAY_UPLOAD=true`, they also upload to the internal Play test. Enable the variable only after the first bundle has been uploaded manually in the Play Console. Uploads are serialized across branches and tags.
 
