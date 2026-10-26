@@ -5,6 +5,7 @@
     type Morning,
     type Practice,
     pickupTime,
+    RIDE_STATUS_LABEL,
     type Ride,
     type RideDetails,
     type RideStatus,
@@ -20,12 +21,6 @@
 
   type Pickup = Ride & { details: RideDetails | null };
 
-  const LABEL: Record<RideStatus, keyof Messages> = {
-    new: 'teamStatusNew',
-    confirmed: 'statusConfirmed',
-    picked_up: 'statusPickedUp',
-    arrived: 'statusArrived',
-  };
   const NEXT: Partial<Record<RideStatus, [RideStatus, keyof Messages]>> = {
     new: ['confirmed', 'markConfirmed'],
     confirmed: ['picked_up', 'markPickedUp'],
@@ -89,7 +84,7 @@
           <span class="time">{d ? pickupTime(d.appointment) : '–'}</span>
           <span class="name">{d?.firstName ?? t().unreadable}</span>
           <span class="chip" class:needs={pickup.status === 'new'} class:new={pickup.status === 'picked_up'}
-            >{t()[LABEL[pickup.status]]}</span
+            >{t()[RIDE_STATUS_LABEL[pickup.status]]}</span
           >
         </header>
         {#if d}

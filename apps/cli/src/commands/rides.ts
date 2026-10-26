@@ -1,4 +1,4 @@
-import { RIDE_STATUSES } from '@app/shared';
+import { type Morning, RIDE_STATUS_LABEL, RIDE_STATUSES } from '@app/shared';
 import { z } from 'zod';
 import { type Command, EXIT, Failure, str } from '../command';
 import { SLUG } from '../config';
@@ -10,7 +10,7 @@ const morningSchema = z.object({
   start: z.string(),
   end: z.string(),
   capacity: z.number(),
-});
+}) satisfies z.ZodType<Omit<Morning, 'booked'>>;
 const morningsSchema = z.object({ mornings: z.array(morningSchema.extend({ booked: z.number() })) });
 // Deliberately omit payload: the CLI reports metadata without decrypting patient details.
 const ridesSchema = z.object({
@@ -41,17 +41,11 @@ export const rides: Command = {
       };
     }
     const data = await api.get(`/team/mornings/${morning}/rides`, ridesSchema);
-    const statuses = {
-      new: m.teamStatusNew,
-      confirmed: m.statusConfirmed,
-      picked_up: m.statusPickedUp,
-      arrived: m.statusArrived,
-    };
     return {
       data,
       text: [
         `${data.morning.date} ${data.morning.start}–${data.morning.end}`,
-        ...data.rides.map((ride) => `${ride.id} · ${statuses[ride.status]} · ${ride.createdAt}`),
+        ...data.rides.map((ride) => `${ride.id} · ${m[RIDE_STATUS_LABEL[ride.status]]} · ${ride.createdAt}`),
         ...(data.rides.length ? [] : [m.noRides]),
       ].join('\n'),
     };

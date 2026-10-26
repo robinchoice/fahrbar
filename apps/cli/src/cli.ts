@@ -72,7 +72,8 @@ export async function run(args: string[], io: Io): Promise<number> {
     const url = (typeof values.url === 'string' ? values.url : (stored?.url ?? DEFAULT_URL)).replace(/\/+$/, '');
     const session = stored?.url === url ? stored : null;
     const api = createClient(url, session?.token, locale, m);
-    const result = command && !values.help ? await command.run({ api, url, session, values, m, locale, io }) : help(m);
+    const result =
+      command && !values.help ? await command.run({ api, url, stored, session, values, m, locale, io }) : help(m);
     io.out(json ? JSON.stringify(result.data, null, 2) : result.text);
     return EXIT.ok;
   } catch (error) {

@@ -25,15 +25,11 @@ beforeEach(() => {
   ip = crypto.randomUUID();
 });
 
-// Login mails need a solved ALTCHA like the login form sends it, the ALTCHA tests post without
-const ALTCHA_PATHS = ['/auth/magic-link', '/auth/code'];
-
-async function post(path: string, body: object, headers: Record<string, string> = {}) {
-  const altcha = ALTCHA_PATHS.includes(path) ? { altcha: await altchaPayload(app) } : {};
-  return send(path, { ...body, ...altcha }, headers);
+async function postWithAltcha(path: string, body: object, headers: Record<string, string> = {}) {
+  return post(path, { ...body, altcha: await altchaPayload(app) }, headers);
 }
 
-function send(path: string, body: unknown, headers: Record<string, string> = {}) {
+function post(path: string, body: unknown, headers: Record<string, string> = {}) {
   return app.request(`/api/v1${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-forwarded-for': ip, ...headers },
@@ -77,7 +73,7 @@ test('health checks the database', async () => {
 
 test('magic link logs in, creates the account and logs out', async () => {
   const email = freshEmail();
-  expect((await post('/auth/magic-link', { email: ` ${email.toUpperCase()} ` })).status).toBe(200);
+  expect((await postWithAltcha('/auth/magic-link', { email: ` ${email.toUpperCase()} ` })).status).toBe(200);
   const token = lastMailedToken()!;
 
   const verify = await post('/auth/verify', { token });
@@ -106,10 +102,10 @@ test('magic link logs in, creates the account and logs out', async () => {
 test('login mails need an ALTCHA solution that is valid and unused', async () => {
   const email = freshEmail();
   const mails = mailCount();
-  const missing = await send('/auth/magic-link', { email }, { 'accept-language': 'en' });
+  const missing = await post('/auth/magic-link', { email }, { 'accept-language': 'en' });
   expect(missing.status).toBe(403);
   expect(await body(missing)).toEqual({ error: messages.en.altchaFailed });
-  expect((await send('/auth/code', { email, altcha: btoa('nonsense') })).status).toBe(403);
+  expect((await post('/auth/code', { email, altcha: btoa('nonsense') })).status).toBe(403);
 
   const altcha = await altchaPayload(app);
   const { challenge, solution } = JSON.parse(atob(altcha));
@@ -119,11 +115,11 @@ test('login mails need an ALTCHA solution that is valid and unused', async () =>
     { challenge: easier, solution },
     { challenge, solution: wrong },
   ])
-    expect((await send('/auth/code', { email, altcha: btoa(JSON.stringify(forged)) })).status).toBe(403);
+    expect((await post('/auth/code', { email, altcha: btoa(JSON.stringify(forged)) })).status).toBe(403);
   expect(mailCount()).toBe(mails);
 
-  expect((await send('/auth/code', { email, altcha })).status).toBe(200);
-  expect((await send('/auth/magic-link', { email, altcha })).status).toBe(403);
+  expect((await post('/auth/code', { email, altcha })).status).toBe(200);
+  expect((await post('/auth/magic-link', { email, altcha })).status).toBe(403);
   expect(mailCount()).toBe(mails + 1);
 });
 
@@ -131,7 +127,7 @@ test('an ALTCHA solution expires after ten minutes', async () => {
   const altcha = await altchaPayload(app);
   setSystemTime(new Date(Date.now() + 11 * 60 * 1000));
   try {
-    expect((await send('/auth/magic-link', { email: freshEmail(), altcha })).status).toBe(403);
+    expect((await post('/auth/magic-link', { email: freshEmail(), altcha })).status).toBe(403);
   } finally {
     setSystemTime();
   }
@@ -139,15 +135,15 @@ test('an ALTCHA solution expires after ten minutes', async () => {
 
 test('requests without ALTCHA leave the rate limits of an address alone', async () => {
   const email = freshEmail();
-  for (let i = 0; i < 10; i++) await send('/auth/magic-link', { email });
-  expect((await post('/auth/magic-link', { email })).status).toBe(200);
+  for (let i = 0; i < 10; i++) await post('/auth/magic-link', { email });
+  expect((await postWithAltcha('/auth/magic-link', { email })).status).toBe(200);
 });
 
 test('a second login reuses the account', async () => {
   const email = freshEmail();
   const ids: string[] = [];
   for (let i = 0; i < 2; i++) {
-    await post('/auth/magic-link', { email });
+    await postWithAltcha('/auth/magic-link', { email });
     ids.push((await read(post('/auth/verify', { token: lastMailedToken() }), userAnswer)).user.id);
   }
   expect(ids[0]).toBe(ids[1]);
@@ -155,7 +151,7 @@ test('a second login reuses the account', async () => {
 
 test('magic link checks allow 60 attempts per IP and leave blocked links usable', async () => {
   const email = freshEmail();
-  expect((await post('/auth/magic-link', { email })).status).toBe(200);
+  expect((await postWithAltcha('/auth/magic-link', { email })).status).toBe(200);
   const token = lastMailedToken()!;
 
   const attempts = await Promise.all(Array.from({ length: 60 }, () => post('/auth/verify', { token: 'invalid' })));
@@ -167,7 +163,7 @@ test('magic link checks allow 60 attempts per IP and leave blocked links usable'
 
   expect((await post('/auth/verify', { token }, { 'x-forwarded-for': crypto.randomUUID() })).status).toBe(200);
 
-  expect((await post('/auth/magic-link', { email })).status).toBe(200);
+  expect((await postWithAltcha('/auth/magic-link', { email })).status).toBe(200);
   const nextToken = lastMailedToken()!;
   expect((await post('/auth/verify', { token: nextToken })).status).toBe(429);
   await db
@@ -185,32 +181,32 @@ test('protected routes need a session', async () => {
 test('login mails per address are rate limited', async () => {
   const email = freshEmail();
   const statuses: number[] = [];
-  for (let i = 0; i < 6; i++) statuses.push((await post('/auth/magic-link', { email })).status);
+  for (let i = 0; i < 6; i++) statuses.push((await postWithAltcha('/auth/magic-link', { email })).status);
   expect(statuses).toEqual([200, 200, 200, 200, 200, 429]);
 });
 
 test('invalid input answers with an error message', async () => {
-  const res = await post('/auth/magic-link', { email: 'no-address' });
+  const res = await postWithAltcha('/auth/magic-link', { email: 'no-address' });
   expect(res.status).toBe(400);
   expect(await body(res)).toEqual({ error: expect.any(String) });
 });
 
 test('errors and mails follow Accept-Language, German by default', async () => {
   const english = { 'accept-language': 'fr-FR,fr;q=0.9,en;q=0.8' };
-  expect(await body(post('/auth/magic-link', { email: 'no-address' }, english))).toEqual({
+  expect(await body(postWithAltcha('/auth/magic-link', { email: 'no-address' }, english))).toEqual({
     error: 'The email address is invalid.',
   });
-  expect(await body(post('/auth/magic-link', { email: 'no-address' }))).toEqual({
+  expect(await body(postWithAltcha('/auth/magic-link', { email: 'no-address' }))).toEqual({
     error: 'Die E-Mail-Adresse ist ungültig.',
   });
 
-  await post('/auth/code', { email: freshEmail() }, english);
+  await postWithAltcha('/auth/code', { email: freshEmail() }, english);
   expect(lastMail()).toContain('is your login code');
 });
 
 test('apps log in with a code and get a bearer token', async () => {
   const email = freshEmail();
-  expect((await post('/auth/code', { email })).status).toBe(200);
+  expect((await postWithAltcha('/auth/code', { email })).status).toBe(200);
   const code = lastMailedCode()!;
 
   expect((await post('/auth/code/verify', { email, code: otherCode(code) })).status).toBe(400);
@@ -228,7 +224,7 @@ test('apps log in with a code and get a bearer token', async () => {
 
 test('a code stops working after five wrong tries', async () => {
   const email = freshEmail();
-  await post('/auth/code', { email });
+  await postWithAltcha('/auth/code', { email });
   const code = lastMailedCode()!;
   for (let i = 0; i < 5; i++) await post('/auth/code/verify', { email, code: otherCode(code) });
   expect((await post('/auth/code/verify', { email, code })).status).toBe(400);
@@ -244,17 +240,17 @@ test('closed sign-up mails only existing accounts, the allowlist and the team', 
   try {
     const mails = mailCount();
     const stranger = freshEmail();
-    const link = await post('/auth/magic-link', { email: stranger });
+    const link = await postWithAltcha('/auth/magic-link', { email: stranger });
     expect(link.status).toBe(403);
     expect(await body(link)).toEqual({
       error: 'Die Registrierung ist noch geschlossen. Für diese Adresse gibt es noch kein Konto.',
     });
-    expect((await post('/auth/code', { email: stranger })).status).toBe(403);
+    expect((await postWithAltcha('/auth/code', { email: stranger })).status).toBe(403);
     expect(mailCount()).toBe(mails);
 
-    expect((await post('/auth/code', { email: existing!.email })).status).toBe(200);
-    expect((await post('/auth/magic-link', { email: teamMember })).status).toBe(200);
-    expect((await post('/auth/magic-link', { email: allowed })).status).toBe(200);
+    expect((await postWithAltcha('/auth/code', { email: existing!.email })).status).toBe(200);
+    expect((await postWithAltcha('/auth/magic-link', { email: teamMember })).status).toBe(200);
+    expect((await postWithAltcha('/auth/magic-link', { email: allowed })).status).toBe(200);
     expect(await body(post('/auth/verify', { token: lastMailedToken() }))).toMatchObject({ user: { email: allowed } });
 
     // login-link still works, Savor's test account needs no allowlist entry
@@ -302,7 +298,7 @@ test('admins invite testers past the closed sign-up, others get 403', async () =
     expect(verify).toMatchObject({ user: { email: tester, admin: false } });
 
     // From now on the tester logs in like any existing account
-    expect((await post('/auth/magic-link', { email: tester })).status).toBe(200);
+    expect((await postWithAltcha('/auth/magic-link', { email: tester })).status).toBe(200);
     expect(process.env.SIGNUP_OPEN).toBeUndefined();
   } finally {
     process.env.SIGNUP_OPEN = 'true';
@@ -384,7 +380,9 @@ test('passkeys belong to logged-in accounts and fail closed', async () => {
 
 test('the web redeems the code from its login mail into a cookie without exposing the token', async () => {
   const email = freshEmail();
-  expect((await post('/auth/magic-link', { email }, { 'x-forwarded-for': crypto.randomUUID() })).status).toBe(200);
+  expect((await postWithAltcha('/auth/magic-link', { email }, { 'x-forwarded-for': crypto.randomUUID() })).status).toBe(
+    200,
+  );
   const code = lastMailedCode()!;
   expect(code).toMatch(/^\d{6}$/);
   expect(lastMail()).toContain(`Oder gib auf der Login-Seite diesen Code ein: ${code}`);
@@ -403,7 +401,9 @@ test('the web redeems the code from its login mail into a cookie without exposin
 
 test('an address removed from the allowlist cannot redeem an issued link or code', async () => {
   const email = freshEmail();
-  expect((await post('/auth/magic-link', { email }, { 'x-forwarded-for': crypto.randomUUID() })).status).toBe(200);
+  expect((await postWithAltcha('/auth/magic-link', { email }, { 'x-forwarded-for': crypto.randomUUID() })).status).toBe(
+    200,
+  );
   const token = lastMailedToken();
   const code = lastMailedCode();
   delete process.env.SIGNUP_OPEN;

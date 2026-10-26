@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Band } from './band';
+import type { Messages } from './messages';
 
 export * from './band';
 export * from './crypto';
@@ -177,6 +178,13 @@ export const bookRideSchema = z.object({
 
 export const RIDE_STATUSES = ['new', 'confirmed', 'picked_up', 'arrived'] as const;
 export type RideStatus = (typeof RIDE_STATUSES)[number];
+
+export const RIDE_STATUS_LABEL = {
+  new: 'teamStatusNew',
+  confirmed: 'statusConfirmed',
+  picked_up: 'statusPickedUp',
+  arrived: 'statusArrived',
+} satisfies Record<RideStatus, keyof Messages>;
 
 export const rideStatusSchema = z.object({ status: z.enum(RIDE_STATUSES) });
 

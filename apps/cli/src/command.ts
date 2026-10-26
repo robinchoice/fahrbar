@@ -18,6 +18,7 @@ export type Io = {
 export type Context = {
   api: Client;
   url: string;
+  stored: Session | null;
   // The stored session, only if it belongs to url
   session: Session | null;
   values: Record<string, unknown>;

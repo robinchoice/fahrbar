@@ -4,7 +4,7 @@ import { deriveKey } from 'altcha-lib/algorithms/pbkdf2';
 import { z } from 'zod';
 import { createClient } from '../client';
 import { type Command, type Context, EXIT, Failure, str } from '../command';
-import { loadSession, removeSession, saveSession } from '../config';
+import { removeSession, saveSession } from '../config';
 
 export const userSchema = z.object({
   id: z.string(),
@@ -52,7 +52,7 @@ export const auth: Record<string, Command> = {
     options: { email: { type: 'string' }, link: { type: 'string' } },
     async run(ctx) {
       // A new login replaces the token of this device: the old one is revoked first, so none stays valid unseen
-      const stored = await loadSession(ctx.io.env);
+      const { stored } = ctx;
       if (stored) {
         await createClient(stored.url, stored.token, ctx.locale, ctx.m).post('/auth/logout', okSchema);
         await removeSession(ctx.io.env);
