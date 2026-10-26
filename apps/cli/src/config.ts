@@ -1,11 +1,12 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { APP_ID } from '@app/shared';
 import { z } from 'zod';
 import type { Env } from './command';
 
 // The CLI file and config folder carry the app slug.
-export const SLUG = 'fahrbar';
+export const SLUG = APP_ID.split('.').at(-1)!;
 
 // build.ts bakes in the URL of the live app, from source it's the default address
 export const DEFAULT_URL = process.env.CLI_URL || `https://${SLUG}.pleasance.org`;

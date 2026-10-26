@@ -7,6 +7,7 @@ export * from './messages';
 
 // The one place to rename a new project. API mails and web titles read it.
 export const APP_NAME = 'fahrbar';
+export const APP_ID = 'org.pleasance.fahrbar';
 
 // Section of the family colour band for this product, see DESIGN.md
 export const APP_BAND: Band = { from: 1, to: 1.35 };
