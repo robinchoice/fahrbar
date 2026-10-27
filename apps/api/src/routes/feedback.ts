@@ -109,13 +109,7 @@ export const feedbackRoutes = new Hono<AppEnv>()
       .insert(feedback)
       .values({ userId: user.id, kind, message, screenshot, context: fullContext })
       .returning({ id: feedback.id });
-    const report: Report = {
-      id: row!.id,
-      user,
-      kind,
-      message,
-      context: fullContext,
-    };
+    const report: Report = { id: row!.id, user, kind, message, context: fullContext };
 
     let issueUrl: string | null = null;
     try {
