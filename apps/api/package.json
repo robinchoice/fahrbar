@@ -11,12 +11,12 @@
     "@app/db": "workspace:*",
     "@app/shared": "workspace:*",
     "@hono/zod-validator": "^0.9.1",
-    "@sentry/bun": "^11.4.0",
+    "@sentry/bun": "^11.8.0",
     "@simplewebauthn/server": "^14.0.3",
     "altcha-lib": "^2.7.0",
-    "drizzle-orm": "^0.45.3",
-    "hono": "^4.13.12",
-    "nodemailer": "^10.0.13",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.13",
+    "nodemailer": "^10.2.1",
     "zod": "^4.6.6"
   },
   "devDependencies": {
